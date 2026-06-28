@@ -1,0 +1,216 @@
+<div class="upload-page">
+
+  <header class="upload-header">
+    <div class="brand">
+      <mat-icon>account_balance</mat-icon>
+      <span>Compta<strong>Assist</strong></span>
+    </div>
+  </header>
+
+  @if (lienValide() === false) {
+    <div class="invalid-container">
+      <mat-icon class="invalid-icon">link_off</mat-icon>
+      <h2>Lien invalide ou expiré</h2>
+      <p>{{ lienMessage() }}</p>
+      <p style="color:#94a3b8;font-size:14px">
+        Contactez votre comptable pour obtenir
+        un nouveau lien.
+      </p>
+    </div>
+  }
+
+  @if (lienValide() === null) {
+    <div class="loading-container">
+      <mat-progress-bar mode="indeterminate">
+      </mat-progress-bar>
+      <p>Vérification du lien...</p>
+    </div>
+  }
+
+  @if (lienValide() === true) {
+    <div class="upload-container">
+
+      <div class="welcome-card">
+        <div class="welcome-icon">
+          <mat-icon>upload_file</mat-icon>
+        </div>
+        <div class="welcome-text">
+          <h1>Bonjour, {{ nomClient() }}</h1>
+          <p>
+            Envoyez vos factures à votre comptable.
+            Elles seront analysées automatiquement.
+          </p>
+          <div class="expiry-info">
+            <mat-icon>schedule</mat-icon>
+            Lien valide jusqu'au
+            {{ expiresAt() | date:'dd/MM/yyyy' }}
+          </div>
+        </div>
+      </div>
+
+      <div class="upload-section">
+        <h2>Vos factures</h2>
+
+        <div class="dropzone"
+             [class.active]="dragOver()"
+             (dragover)="onDragOver($event)"
+             (dragleave)="onDragLeave()"
+             (drop)="onDrop($event)">
+          <mat-icon class="drop-icon">cloud_upload</mat-icon>
+          <h3>Glissez vos fichiers ici</h3>
+          <p>PDF, JPG, PNG acceptés</p>
+          <label class="select-btn">
+            <input type="file"
+                   accept=".pdf,image/*"
+                   multiple
+                   hidden
+                   (change)="onFileSelect($event)" />
+            <mat-icon>folder_open</mat-icon>
+            Sélectionner des fichiers
+          </label>
+        </div>
+
+        @if (fichiers().length > 0) {
+          <div class="fichiers-list">
+            <div class="fichiers-header">
+              <h3>
+                Fichiers sélectionnés
+                ({{ fichiers().length }})
+              </h3>
+              @if (uploading()) {
+                <span class="uploading-label">
+                  Envoi en cours...
+                </span>
+              }
+            </div>
+
+            @for (f of fichiers(); track f.nom) {
+              <div class="fichier-item"
+                   [class.ok]="f.statut === 'OK'"
+                   [class.erreur]="f.statut === 'ERREUR'">
+
+                <mat-icon class="file-icon">
+                  {{ f.nom.endsWith('.pdf')
+                  ? 'picture_as_pdf'
+                  : 'image' }}
+                </mat-icon>
+
+                <div class="file-info">
+                  <span class="file-name">{{ f.nom }}</span>
+                  <span class="file-size">
+                    {{ formatSize(f.taille) }}
+                  </span>
+                </div>
+
+                @if (f.statut === 'ATTENTE') {
+                  <span class="statut-badge attente">
+                    En attente
+                  </span>
+                } @else if (f.statut === 'UPLOADING') {
+                  <span class="statut-badge uploading">
+                    <mat-icon class="spin">sync</mat-icon>
+                    Envoi...
+                  </span>
+                } @else if (f.statut === 'OK') {
+                  <span class="statut-badge ok">
+                    <mat-icon>check_circle</mat-icon>
+                    Envoyé
+                  </span>
+                } @else {
+                  <span class="statut-badge erreur">
+                    <mat-icon>error</mat-icon>
+                    Erreur
+                  </span>
+                }
+
+                @if (f.statut === 'ATTENTE') {
+                  <button mat-icon-button
+                          (click)="supprimerFichier(f.nom)">
+                    <mat-icon>close</mat-icon>
+                  </button>
+                }
+              </div>
+            }
+
+            @if (uploading()) {
+              <div class="progression">
+                <mat-progress-bar
+                  mode="determinate"
+                  [value]="progression">
+                </mat-progress-bar>
+                <span>{{ progression }}%</span>
+              </div>
+            }
+
+            @if (aFichiersEnAttente) {
+              <div class="send-action">
+                <button mat-flat-button
+                        class="send-btn"
+                        [disabled]="uploading()"
+                        (click)="uploaderTout()">
+                  <mat-icon>send</mat-icon>
+                  Envoyer à mon comptable
+                  ({{ nbEnAttente }})
+                </button>
+              </div>
+            }
+          </div>
+        }
+      </div>
+
+      @if (toutTermine) {
+        <div class="success-card">
+          <mat-icon>check_circle</mat-icon>
+          <h3>
+            {{ totalUploade() }} facture(s)
+            envoyée(s) avec succès !
+          </h3>
+          <p>Votre comptable va les analyser prochainement.</p>
+        </div>
+      }
+
+      <div class="info-card">
+        <mat-icon>info</mat-icon>
+        <div>
+          <strong>Comment ça fonctionne ?</strong>
+          <p>
+            Vos factures sont analysées automatiquement
+            par notre IA. Votre comptable reçoit les données
+            directement dans son tableau de bord.
+          </p>
+        </div>
+      </div>
+
+      <!-- ══ BOUTON CHAT FLOTTANT ══════════════════════ -->
+      @if (clientId()) {
+        <button class="chat-fab"
+                (click)="toggleChat()">
+          <mat-icon>
+            {{ showChat() ? 'close' : 'chat' }}
+          </mat-icon>
+          @if (!showChat()) {
+            <span>Messagerie</span>
+          }
+          @if (!showChat() && nonLusClient() > 0) {
+            <span class="fab-badge">{{ nonLusClient() }}</span>
+          }
+        </button>
+
+        @if (showChat()) {
+          <button class="chat-close"
+                  (click)="showChat.set(false)">
+            <mat-icon>close</mat-icon>
+          </button>
+          <div class="chat-panel">
+
+            <app-chat-client
+              [clientIdInput]="clientId()">
+            </app-chat-client>
+          </div>
+        }
+      }
+
+    </div>
+  }
+
+</div>

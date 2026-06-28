@@ -1,0 +1,138 @@
+<div class="dir-layout">
+
+  <aside class="sidebar">
+    <div class="sidebar-top">
+      <div class="brand">
+        <span class="brand-dot"></span>Compta<strong>Assist</strong>
+      </div>
+      <nav>
+        @for (item of navItems; track item.route) {
+          <a [routerLink]="item.route"
+             routerLinkActive="active"
+             [routerLinkActiveOptions]="{exact: item.route === '/directeur'}"
+             class="nav-link">
+            <mat-icon>{{ item.icon }}</mat-icon>
+            <span>{{ item.label }}</span>
+          </a>
+        }
+      </nav>
+    </div>
+    <div class="sidebar-bottom">
+      <div class="user-row">
+        <div class="user-av">
+          {{ currentUser()?.prenom?.charAt(0) }}{{ currentUser()?.nom?.charAt(0) }}
+        </div>
+        <div class="user-text">
+          <strong>{{ currentUser()?.prenom }} {{ currentUser()?.nom }}</strong>
+          <span>Directeur</span>
+        </div>
+        <button class="logout-btn" (click)="logout()">
+          <mat-icon>logout</mat-icon>
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <main class="main">
+
+    <div class="main-header">
+      <div>
+        <p class="greeting-label">Directeur</p>
+        <h1 class="greeting">Mon équipe</h1>
+        <p class="sub">Gérez les comptables de votre cabinet</p>
+      </div>
+      <button class="btn-new" (click)="showForm.set(true)">
+        <mat-icon>person_add</mat-icon>
+        Ajouter un comptable
+      </button>
+    </div>
+
+    @if (showForm()) {
+      <div class="form-card">
+        <div class="form-card-header">
+          <h3>Ajouter un comptable</h3>
+          <button class="close-btn" (click)="showForm.set(false)">
+            <mat-icon>close</mat-icon>
+          </button>
+        </div>
+        <form [formGroup]="form" (ngSubmit)="ajouter()">
+          <div class="form-grid">
+            <div class="field">
+              <label>Prénom *</label>
+              <input formControlName="prenom" placeholder="Mohammed" />
+            </div>
+            <div class="field">
+              <label>Nom *</label>
+              <input formControlName="nom" placeholder="Alaoui" />
+            </div>
+            <div class="field full">
+              <label>Email *</label>
+              <input formControlName="email" type="email"
+                     placeholder="mohammed@cabinet.ma" />
+              <span class="hint">Un compte sera créé pour ce comptable</span>
+            </div>
+          </div>
+          <div class="form-actions">
+            <button type="button" class="btn-cancel"
+                    (click)="showForm.set(false)">Annuler</button>
+            <button type="submit" class="btn-new"
+                    [disabled]="form.invalid || loading()">
+              <mat-icon>save</mat-icon> Ajouter
+            </button>
+          </div>
+        </form>
+      </div>
+    }
+
+    @if (membres().length === 0) {
+      <div class="empty-full">
+        <mat-icon>group_add</mat-icon>
+        <p>Aucun comptable dans votre équipe.</p>
+        <button class="btn-new" (click)="showForm.set(true)">
+          <mat-icon>person_add</mat-icon>
+          Ajouter le premier comptable
+        </button>
+      </div>
+    } @else {
+      <div class="membres-grid">
+        @for (m of membres(); track m.id) {
+          <div class="membre-card">
+            <div class="membre-top">
+              <div class="m-av">{{ m.prenom.charAt(0) }}{{ m.nom.charAt(0) }}</div>
+              <span class="badge" [class.on]="m.actif" [class.off]="!m.actif">
+                {{ m.actif ? 'Actif' : 'Inactif' }}
+              </span>
+            </div>
+            <div class="membre-body">
+              <h3>{{ m.prenom }} {{ m.nom }}</h3>
+              <p class="m-email">
+                <mat-icon>email</mat-icon>{{ m.email }}
+              </p>
+              <p class="m-role">
+                <mat-icon>work</mat-icon>{{ m.role }}
+              </p>
+            </div>
+            <div class="membre-footer">
+              @if (m.actif) {
+                <button class="action-btn warn" matTooltip="Désactiver"
+                        (click)="desactiver(m.id)">
+                  <mat-icon>person_off</mat-icon>
+                </button>
+              } @else {
+                <button class="action-btn success" matTooltip="Réactiver"
+                        (click)="reactiver(m.id)">
+                  <mat-icon>person</mat-icon>
+                </button>
+              }
+              <button class="action-btn danger" matTooltip="Supprimer"
+                      (click)="supprimer(m.id, m.prenom + ' ' + m.nom)">
+                <mat-icon>delete_forever</mat-icon>
+              </button>
+            </div>
+          </div>
+        }
+      </div>
+    }
+
+  </main>
+</div>

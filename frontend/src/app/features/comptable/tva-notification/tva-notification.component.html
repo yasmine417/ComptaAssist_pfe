@@ -1,0 +1,24 @@
+<div class="notifs-container">
+  @for (notif of notifications(); track notif.id) {
+    <div class="toast">
+      <div class="toast-left">
+        <mat-icon class="toast-icon">warning</mat-icon>
+        <div class="toast-body">
+          <span class="toast-title">Déclaration TVA en retard</span>
+          <span class="toast-desc">
+            {{ notif.periodeLabel }} —
+            {{ notif.joursRetard }} jour(s) de retard
+          </span>
+        </div>
+      </div>
+      <div class="toast-right">
+        <a class="toast-link" routerLink="/comptable/tva">
+          Voir
+        </a>
+        <button class="toast-close" (click)="fermer(notif.id)">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+    </div>
+  }
+</div>

@@ -1,0 +1,257 @@
+<div class="dash-layout">
+  <app-comptable-sidebar></app-comptable-sidebar>
+
+  <main class="chat-shell">
+
+    <!-- ══ SIDEBAR CONVERSATIONS ═══════════════════════ -->
+    <div class="sidebar">
+
+      <div class="sidebar-top">
+        <h2>Chat</h2>
+        <button class="icon-action"
+                (click)="ouvrirAvecClientActif()"
+                matTooltip="Nouveau message">
+          <mat-icon>edit</mat-icon>
+        </button>
+      </div>
+
+      <div class="search-wrap">
+        <mat-icon class="search-ico">search</mat-icon>
+        <input class="search-input"
+               type="text"
+               placeholder="Search" />
+      </div>
+
+      <div class="conv-scroll">
+        @if (loading()) {
+          <div class="state-center">
+            <div class="spinner"></div>
+          </div>
+        }
+        @if (conversations().length === 0 && !loading()) {
+          <div class="state-center">
+            <mat-icon>chat_bubble_outline</mat-icon>
+            <p>Aucune conversation</p>
+          </div>
+        }
+        @for (conv of conversations(); track conv.id) {
+          <div class="conv-card"
+               [class.conv-active]="convActive()?.id === conv.id"
+               (click)="ouvrirConversation(conv)">
+            <div class="avatar avatar-purple">
+              {{ getInitiales(conv.clientNom) }}
+              <span class="online-ring"></span>
+            </div>
+            <div class="conv-text">
+              <div class="conv-line1">
+                <span class="conv-name">{{ conv.clientNom }}</span>
+                <span class="conv-ts">
+                  {{ conv.dateDernierMessage
+                  ? formatDate(conv.dateDernierMessage) : '' }}
+                </span>
+              </div>
+              <div class="conv-line2">
+                <span class="conv-preview">
+                  {{ conv.dernierMessage || 'Démarrer…' }}
+                </span>
+                @if (getNonLus(conv) > 0) {
+                  <span class="pill-badge">
+                    {{ getNonLus(conv) }}
+                  </span>
+                }
+              </div>
+            </div>
+          </div>
+        }
+      </div>
+
+      <div class="conn-status" [class.conn-on]="connected()">
+        <span class="conn-dot"></span>
+        {{ connected() ? 'En ligne' : 'Hors ligne' }}
+      </div>
+
+    </div>
+
+    <!-- ══ ZONE PRINCIPALE ══════════════════════════════ -->
+    <div class="chat-area">
+
+      @if (!convActive()) {
+        <div class="no-conv-state">
+          <div class="no-conv-icon">
+            <mat-icon>forum</mat-icon>
+          </div>
+          <h3>Sélectionnez une conversation</h3>
+          <p>ou démarrez-en une avec un client actif</p>
+          <button class="btn-purple"
+                  (click)="ouvrirAvecClientActif()">
+            <mat-icon>add_comment</mat-icon>
+            Nouveau message
+          </button>
+        </div>
+      }
+
+      @if (convActive()) {
+
+        <!-- Header -->
+        <div class="chat-top">
+          <div class="avatar avatar-blue">
+            {{ getInitiales(convActive()!.clientNom) }}
+          </div>
+          <div class="chat-top-info">
+            <span class="chat-top-name">
+              {{ convActive()!.clientNom }}
+            </span>
+            <span class="chat-top-sub">
+              {{ convActive()!.clientEmail }}
+            </span>
+          </div>
+          <div class="chat-top-actions">
+            <button class="icon-action"
+                    [disabled]="demarrantVisio()"
+                    (click)="demarrerVisio()"
+                    matTooltip="Démarrer une visio">
+              <mat-icon>videocam</mat-icon>
+            </button>
+            <button class="icon-action"
+                    (click)="copierLienClient(convActive()!)"
+                    matTooltip="Lien client">
+              <mat-icon>link</mat-icon>
+            </button>
+            <span class="conn-pill" [class.pill-on]="connected()">
+              <span class="conn-dot"></span>
+              {{ connected() ? 'Connecté' : 'Hors ligne' }}
+            </span>
+          </div>
+        </div>
+
+        <!-- Messages -->
+        <div class="msgs-scroll">
+
+          @if (loadingMessages()) {
+            <div class="state-center">
+              <div class="spinner"></div>
+            </div>
+          }
+
+          @if (!loadingMessages() && messages().length === 0) {
+            <div class="state-center">
+              <mat-icon>waving_hand</mat-icon>
+              <p>Commencez la conversation !</p>
+            </div>
+          }
+
+          @for (msg of messages(); track msg.id) {
+            <div class="msg-wrap"
+                 [class.wrap-me]="estMoi(msg)"
+                 [class.wrap-them]="!estMoi(msg)">
+
+              @if (!estMoi(msg)) {
+                <div class="avatar avatar-sm avatar-green">
+                  {{ getInitiales(msg.expediteurNom) }}
+                </div>
+              }
+
+              <div class="msg-col">
+                @if (!estMoi(msg)) {
+                  <span class="msg-from">
+                    {{ msg.expediteurNom }}
+                  </span>
+                }
+
+                <div class="bubble"
+                     [class.b-me]="estMoi(msg)"
+                     [class.b-them]="!estMoi(msg)">
+
+                  @if (estLienVisio(msg.contenu)) {
+                    <div class="visio-invite">
+                      <mat-icon>video_call</mat-icon>
+                      <span>{{ extraireTexteAvantLien(msg.contenu) }}</span>
+                      <a [href]="extraireLienVisio(msg.contenu)"
+                         target="_blank"
+                         class="btn-rejoindre-visio">
+                        Rejoindre la visio
+                      </a>
+                    </div>
+                  } @else if (!msg.typeMessage
+                  || msg.typeMessage === 'TEXTE') {
+                    {{ msg.contenu }}
+                  }
+
+                  @if (msg.typeMessage === 'IMAGE') {
+                    <img [src]="msg.urlFichier"
+                         [alt]="msg.nomFichier"
+                         class="msg-image"
+                         (click)="ouvrirFichier(msg.urlFichier!)" />
+                  }
+
+                  @if (msg.typeMessage === 'FICHIER') {
+                    <div class="msg-fichier"
+                         (click)="ouvrirFichier(msg.urlFichier!)">
+                      <mat-icon>insert_drive_file</mat-icon>
+                      <span>{{ msg.nomFichier }}</span>
+                      <mat-icon class="dl-icon">download</mat-icon>
+                    </div>
+                  }
+
+                </div>
+
+                <span class="msg-ts"
+                      [class.ts-me]="estMoi(msg)">
+                  {{ formatDate(msg.createdAt) }}
+                  @if (estMoi(msg)) {
+                    <mat-icon class="tick"
+                              [class.tick-read]="msg.lu">
+                      {{ msg.lu ? 'done_all' : 'done' }}
+                    </mat-icon>
+                  }
+                </span>
+              </div>
+
+            </div>
+          }
+
+          <div #messagesEnd></div>
+        </div>
+
+        <!-- Zone saisie -->
+        <div class="input-row">
+
+          <!-- Input fichier caché -->
+          <input type="file"
+                 #fileInput
+                 style="display:none"
+                 accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
+                 (change)="onFichierSelectionne($event)" />
+
+          <button class="icon-action"
+                  (click)="fileInput.click()"
+                  matTooltip="Joindre un fichier">
+            <mat-icon>attach_file</mat-icon>
+          </button>
+
+          <div class="input-box">
+            <textarea class="msg-ta"
+                      [(ngModel)]="texte"
+                      (keydown)="onEnter($event)"
+                      placeholder="Type Something..."
+                      rows="1">
+            </textarea>
+            <button class="icon-action sm">
+              <mat-icon>sentiment_satisfied</mat-icon>
+            </button>
+          </div>
+
+          <button class="send-fab"
+                  (click)="envoyer()"
+                  [disabled]="!texte.trim()">
+            <mat-icon>send</mat-icon>
+          </button>
+
+        </div>
+
+      }
+
+    </div>
+
+  </main>
+</div>

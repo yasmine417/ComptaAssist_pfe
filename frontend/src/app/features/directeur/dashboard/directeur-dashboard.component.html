@@ -1,0 +1,316 @@
+<div class="dir-layout">
+
+  <!-- ══ WIZARD CRÉATION CABINET ══════════════════════════════ -->
+  @if (showCreateCabinet()) {
+    <div class="wizard-overlay">
+      <div class="wizard-card">
+        <div class="wizard-brand">
+          <span class="brand-dot"></span>
+          Compta<strong>Assist</strong>
+        </div>
+        <h2>Créez votre cabinet</h2>
+        <p class="wizard-sub">
+          Quelques informations pour démarrer votre espace de travail.
+        </p>
+
+        <form [formGroup]="cabinetForm"
+              (ngSubmit)="creerCabinet()"
+              class="wizard-form">
+          <div class="field-pair">
+            <div class="field">
+              <label>Nom du cabinet *</label>
+              <input formControlName="nom"
+                     placeholder="Cabinet Alaoui & Associés" />
+            </div>
+            <div class="field">
+              <label>Email *</label>
+              <input formControlName="email" type="email"
+                     placeholder="contact@cabinet.ma" />
+            </div>
+          </div>
+          <div class="field-pair">
+            <div class="field">
+              <label>Téléphone</label>
+              <input formControlName="telephone"
+                     placeholder="0600 000 000" />
+            </div>
+            <div class="field">
+              <label>Adresse</label>
+              <input formControlName="adresse"
+                     placeholder="Casablanca, Maroc" />
+            </div>
+          </div>
+          <button type="submit" class="wizard-submit"
+                  [disabled]="cabinetForm.invalid || creatingCabinet()">
+            @if (creatingCabinet()) {
+              <span class="spin-dot"></span> Création…
+            } @else {
+              Créer mon cabinet →
+            }
+          </button>
+        </form>
+      </div>
+    </div>
+  }
+
+  <!-- ══ SIDEBAR ════════════════════════════════════════════════ -->
+  <aside class="sidebar">
+    <div class="sidebar-top">
+      <div class="brand">
+        <span class="brand-dot"></span>
+        <span class="brand-text">Compta<strong>Assist</strong></span>
+      </div>
+
+      <div class="cabinet-pill">
+        <mat-icon>domain</mat-icon>
+        <span>{{ cabinet()?.nom || 'Mon cabinet' }}</span>
+      </div>
+
+      <nav>
+        @for (item of navItems; track item.route) {
+          <a [routerLink]="item.route"
+             routerLinkActive="active"
+             [routerLinkActiveOptions]="{exact: item.route === '/directeur'}"
+             class="nav-link">
+            <mat-icon>{{ item.icon }}</mat-icon>
+            <span>{{ item.label }}</span>
+          </a>
+        }
+      </nav>
+    </div>
+
+    <div class="sidebar-bottom">
+      <div class="user-row">
+        <div class="user-av">
+          {{ currentUser()?.prenom?.charAt(0) }}{{ currentUser()?.nom?.charAt(0) }}
+        </div>
+        <div class="user-text">
+          <strong>{{ currentUser()?.prenom }} {{ currentUser()?.nom }}</strong>
+          <span>Directeur</span>
+        </div>
+        <button class="logout-btn" (click)="logout()"
+                matTooltip="Déconnexion">
+          <mat-icon>logout</mat-icon>
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ══ MAIN ══════════════════════════════════════════════════ -->
+  <main class="main">
+
+    <!-- Header -->
+    <div class="main-header">
+      <div>
+        <p class="greeting-label">Tableau de bord</p>
+        <h1 class="greeting">
+          Bonjour, {{ currentUser()?.prenom }}
+        </h1>
+      </div>
+      <a routerLink="/directeur/clients" class="btn-new">
+        <mat-icon>add</mat-icon>
+        Nouveau client
+      </a>
+    </div>
+
+    <!-- KPIs -->
+    <div class="kpi-row">
+      <div class="kpi kpi-teal">
+        <div class="kpi-left">
+          <span class="kpi-num">{{ clients().length }}</span>
+          <span class="kpi-lbl">Clients actifs</span>
+        </div>
+        <mat-icon>folder_shared</mat-icon>
+        <a routerLink="/directeur/clients" class="kpi-go">
+          Voir <mat-icon>east</mat-icon>
+        </a>
+      </div>
+      <div class="kpi kpi-indigo">
+        <div class="kpi-left">
+          <span class="kpi-num">{{ membres().length }}</span>
+          <span class="kpi-lbl">Comptables</span>
+        </div>
+        <mat-icon>people</mat-icon>
+        <a routerLink="/directeur/membres" class="kpi-go">
+          Gérer <mat-icon>east</mat-icon>
+        </a>
+      </div>
+      <div class="kpi kpi-amber">
+        <div class="kpi-left">
+          <span class="kpi-num">IA</span>
+          <span class="kpi-lbl">Analyses dispo</span>
+        </div>
+        <mat-icon>auto_awesome</mat-icon>
+        <a routerLink="/directeur/rapports" class="kpi-go">
+          Explorer <mat-icon>east</mat-icon>
+        </a>
+      </div>
+      <div class="kpi kpi-rose">
+        <div class="kpi-left">
+          <span class="kpi-num">{{ dossiersEnRetard }}</span>
+          <span class="kpi-lbl">Dossiers en retard</span>
+        </div>
+        <mat-icon>notifications_active</mat-icon>
+      </div>
+    </div>
+
+    <!-- Content grid -->
+    <div class="content-grid">
+      <div class="panel panel-wide">
+        <div class="panel-head">
+          <h2>Avancement par comptable</h2>
+        </div>
+
+        @if (loadingAvancement()) {
+          <div class="panel-empty">
+            <div class="loader"></div>
+            <span>Chargement…</span>
+          </div>
+        } @else if (avancements().length === 0) {
+          <div class="panel-empty">
+            <mat-icon>insights</mat-icon>
+            <p>Aucune donnée d'avancement</p>
+          </div>
+        } @else {
+          <div class="avancement-wrapper">
+            @for (groupe of dossiersParComptable(); track groupe.comptable) {
+              <div class="comptable-block">
+
+                <div class="comptable-header">
+                  <div class="comptable-av">
+                    {{ groupe.comptable.charAt(0) }}
+                  </div>
+                  <span class="comptable-nom">{{ groupe.comptable }}</span>
+                  <span class="comptable-count">
+              {{ groupe.dossiers.length }} dossier(s)
+            </span>
+                </div>
+
+                <div class="dossiers-table">
+                  @for (d of groupe.dossiers; track d.clientId) {
+                    <div class="dossier-line">
+                      <div class="dossier-main">
+                        <span class="dossier-nom">{{ d.nomEntreprise }}</span>
+                        <div class="dossier-tags">
+
+      <span class="mini-tag" [class.mini-tag-danger]="d.facturesEnAttente > 5">
+        <mat-icon>description</mat-icon>
+        {{ d.facturesEnAttente }} facture(s) en attente
+      </span>
+
+                          <span class="mini-tag"
+                                [class.mini-tag-danger]="d.statutTva === 'EN_RETARD'"
+                                [class.mini-tag-ok]="d.statutTva === 'DECLAREE'">
+        <mat-icon>
+          {{ d.statutTva === 'EN_RETARD' ? 'warning' :
+          d.statutTva === 'DECLAREE' ? 'check_circle' : 'schedule' }}
+        </mat-icon>
+                            @switch (d.statutTva) {
+                              @case ('EN_RETARD') { TVA en retard }
+                              @case ('DECLAREE') { TVA déclarée }
+                              @case ('A_VENIR') { TVA à déclarer }
+                              @default { Pas de TVA due }
+                            }
+      </span>
+
+                        </div>
+                      </div>
+                      <span class="statut-pill" [class]="getStatutClass(d.statutCalcule)">
+    {{ d.statutCalcule }}
+  </span>
+                    </div>
+                  }
+                </div>
+
+              </div>
+            }
+          </div>
+        }
+      </div>
+      <!-- Clients récents -->
+      <div class="panel">
+        <div class="panel-head">
+          <h2>Dossiers clients</h2>
+          <a routerLink="/directeur/clients" class="link-all">
+            Voir tout →
+          </a>
+        </div>
+
+        @if (loading()) {
+          <div class="panel-empty">
+            <div class="loader"></div>
+            <span>Chargement…</span>
+          </div>
+        } @else if (clients().length === 0) {
+          <div class="panel-empty">
+            <mat-icon>folder_open</mat-icon>
+            <p>Aucun dossier client</p>
+            <a routerLink="/directeur/clients" class="btn-new sm">
+              <mat-icon>add</mat-icon> Premier client
+            </a>
+          </div>
+        } @else {
+          <div class="client-list">
+            @for (c of clients().slice(0, 6); track c.id) {
+              <div class="client-row">
+                <div class="c-av">{{ c.nomEntreprise.charAt(0) }}</div>
+                <div class="c-info">
+                  <strong>{{ c.nomEntreprise }}</strong>
+                  <span>{{ c.numeroFiscal }}</span>
+                </div>
+                <span class="badge"
+                      [class.on]="c.actif"
+                      [class.off]="!c.actif">
+                  {{ c.actif ? 'Actif' : 'Inactif' }}
+                </span>
+              </div>
+            }
+          </div>
+        }
+      </div>
+
+      <!-- Avancement des dossiers -->
+
+
+      <!-- Équipe -->
+      <div class="panel">
+        <div class="panel-head">
+          <h2>Mon équipe</h2>
+          <a routerLink="/directeur/membres" class="link-all">
+            Gérer →
+          </a>
+        </div>
+
+        @if (membres().length === 0) {
+          <div class="panel-empty">
+            <mat-icon>group_add</mat-icon>
+            <p>Aucun comptable encore</p>
+            <a routerLink="/directeur/membres" class="btn-new sm">
+              <mat-icon>person_add</mat-icon> Ajouter
+            </a>
+          </div>
+        } @else {
+          <div class="membre-list">
+            @for (m of membres(); track m.id) {
+              <div class="membre-row">
+                <div class="m-av">
+                  {{ m.prenom.charAt(0) }}{{ m.nom.charAt(0) }}
+                </div>
+                <div class="m-info">
+                  <strong>{{ m.prenom }} {{ m.nom }}</strong>
+                  <span>{{ m.email }}</span>
+                </div>
+                <span class="badge"
+                      [class.on]="m.actif"
+                      [class.off]="!m.actif">
+                  {{ m.actif ? 'Actif' : 'Inactif' }}
+                </span>
+              </div>
+            }
+          </div>
+        }
+      </div>
+
+    </div>
+  </main>
+</div>

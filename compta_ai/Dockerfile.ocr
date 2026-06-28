@@ -1,0 +1,14 @@
+ FROM python:3.11-slim
+WORKDIR /app
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    poppler-utils \
+    tesseract-ocr \
+    libgl1 \
+    && rm -rf /var/lib/apt/lists/*
+COPY requirements-ocr.txt .
+RUN pip install --no-cache-dir -r requirements-ocr.txt
+COPY ocr_api.py ocr_service.py ./
+COPY modules ./modules
+COPY data ./data
+EXPOSE 8002
+CMD ["uvicorn", "ocr_api:app", "--host", "0.0.0.0", "--port", "8002"]

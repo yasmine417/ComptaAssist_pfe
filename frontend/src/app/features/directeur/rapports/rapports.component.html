@@ -1,0 +1,99 @@
+<div class="dash-layout">
+  <aside class="sidebar green">
+    <div class="sidebar-brand">
+      <mat-icon>account_balance</mat-icon>
+      <span>Compta<strong>Assist</strong></span>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">Directeur</div>
+      @for (item of navItems; track item.route) {
+        <a [routerLink]="item.route" routerLinkActive="active"
+           [routerLinkActiveOptions]="{exact: item.route === '/directeur'}"
+           class="nav-item">
+          <mat-icon>{{ item.icon }}</mat-icon>
+          <span>{{ item.label }}</span>
+        </a>
+      }
+    </nav>
+    <div class="sidebar-user">
+      <div class="user-avatar green">
+        <mat-icon>business</mat-icon>
+      </div>
+      <div class="user-info">
+        <span class="user-name">
+          {{ currentUser()?.prenom }} {{ currentUser()?.nom }}
+        </span>
+        <span class="user-role">Directeur</span>
+      </div>
+      <button mat-icon-button (click)="logout()">
+        <mat-icon>logout</mat-icon>
+      </button>
+    </div>
+  </aside>
+
+  <main class="main-content">
+    <div class="top-bar">
+      <div>
+        <h1 class="page-title">Rapports & Analyses</h1>
+        <p class="page-sub">
+          {{ analyses().length }} rapport(s) disponible(s)
+        </p>
+      </div>
+    </div>
+
+    @if (analyses().length === 0) {
+      <div class="empty-full">
+        <mat-icon>summarize</mat-icon>
+        <h3>Aucun rapport disponible</h3>
+        <p>
+          Les rapports seront disponibles une fois que vos
+          comptables auront analysé des bilans.
+        </p>
+      </div>
+    } @else {
+      <div class="rapports-grid">
+        @for (a of analyses(); track a.id) {
+          <div class="rapport-card animate-fade-in-up">
+
+            <div class="rapport-icon">
+              <mat-icon>description</mat-icon>
+            </div>
+
+            <div class="rapport-body">
+              <h3>Analyse Bilan — Exercice {{ a.exercice }}</h3>
+              <p class="rapport-date">
+                <mat-icon>calendar_today</mat-icon>
+                {{ a.createdAt | date:'dd/MM/yyyy HH:mm' }}
+              </p>
+              @if (a.conclusion) {
+                <p class="rapport-conclusion">
+                  {{ a.conclusion | slice:0:100 }}...
+                </p>
+              }
+              @if (a.anomalies) {
+                <span class="badge-danger">
+                  Anomalies détectées
+                </span>
+              }
+            </div>
+
+            <div class="rapport-actions">
+              <button mat-flat-button class="btn-download"
+                      (click)="telechargerRapport(a)"
+                      [disabled]="downloading() === a.id">
+                @if (downloading() === a.id) {
+                  <mat-icon>hourglass_empty</mat-icon>
+                  Génération...
+                } @else {
+                  <mat-icon>download</mat-icon>
+                  Télécharger
+                }
+              </button>
+            </div>
+
+          </div>
+        }
+      </div>
+    }
+  </main>
+</div>

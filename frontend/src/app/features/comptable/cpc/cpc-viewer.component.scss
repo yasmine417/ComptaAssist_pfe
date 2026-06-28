@@ -1,0 +1,195 @@
+:host { display: block; height: 100vh; overflow: hidden; }
+
+.viewer-layout {
+  display: flex; height: 100vh; overflow: hidden;
+  background: #f8fafc; font-family: 'DM Sans','Inter',sans-serif;
+}
+.viewer-main {
+  flex: 1; display: flex; flex-direction: column;
+  overflow: hidden; min-width: 0;
+}
+
+// ── Header ────────────────────────────────────────────
+.page-header {
+  display: flex; align-items: center;
+  justify-content: space-between; gap: 12px;
+  padding: 14px 24px; background: white;
+  border-bottom: 1px solid #e2e8f0; flex-shrink: 0;
+}
+.header-left { display: flex; align-items: center; gap: 12px; }
+.header-icon-wrap {
+  width: 40px; height: 40px; border-radius: 10px;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  display: flex; align-items: center; justify-content: center;
+  mat-icon { color: white; font-size: 20px; }
+}
+h1 { font-size: 18px; font-weight: 700; color: #0f172a; margin: 0; }
+.header-sub { font-size: 12px; color: #64748b; margin: 2px 0 0; }
+
+.btn-export {
+  display: flex; align-items: center; gap: 6px;
+  padding: 7px 14px; background: #f1f5f9;
+  border: 1px solid #e2e8f0; border-radius: 8px;
+  color: #374151; cursor: pointer; font-size: 13px;
+  mat-icon { font-size: 16px; }
+  &:hover { background: #e2e8f0; }
+}
+
+// ── Onglets ───────────────────────────────────────────
+.tabs-bar {
+  display: flex; gap: 2px; padding: 10px 24px 0;
+  background: white; border-bottom: 1px solid #e2e8f0;
+  flex-shrink: 0;
+}
+.tab-btn {
+  display: flex; align-items: center; gap: 6px;
+  padding: 8px 16px; background: none; border: none;
+  border-bottom: 2px solid transparent;
+  color: #64748b; cursor: pointer; font-size: 13px;
+  font-weight: 500; margin-bottom: -1px;
+  transition: all 0.15s;
+  mat-icon { font-size: 16px; }
+  &:hover { color: #6366f1; }
+  &.active {
+    color: #6366f1; border-bottom-color: #6366f1;
+    font-weight: 700;
+  }
+}
+
+// ── Contrôles période ─────────────────────────────────
+.controls-bar {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 24px; background: white;
+  border-bottom: 1px solid #f1f5f9; flex-shrink: 0;
+  flex-wrap: wrap;
+}
+.mode-toggle {
+  display: flex; background: #f1f5f9; border-radius: 8px; padding: 2px;
+  button {
+    padding: 5px 12px; background: none; border: none;
+    border-radius: 6px; cursor: pointer; font-size: 12px;
+    color: #64748b; transition: all 0.15s;
+    &.active { background: white; color: #0f172a; font-weight: 600;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+  }
+}
+.ctrl-select, .ctrl-input {
+  padding: 6px 10px; border: 1px solid #e2e8f0; border-radius: 6px;
+  font-size: 13px; color: #0f172a; background: white; outline: none;
+  &:focus { border-color: #6366f1; }
+}
+.ctrl-compte { width: 150px; }
+.ctrl-sep { color: #94a3b8; font-size: 12px; }
+.btn-generer {
+  display: flex; align-items: center; gap: 6px;
+  padding: 7px 16px; background: #6366f1; color: white;
+  border: none; border-radius: 8px; cursor: pointer;
+  font-size: 13px; font-weight: 600;
+  mat-icon { font-size: 16px; }
+  &:hover { background: #4f46e5; }
+}
+
+// ── Erreur ────────────────────────────────────────────
+.erreur-msg {
+  display: flex; align-items: center; gap: 8px;
+  margin: 12px 24px; padding: 10px 14px;
+  background: #fef2f2; border: 1px solid #fecaca;
+  border-radius: 8px; color: #dc2626; font-size: 13px;
+  mat-icon { font-size: 16px; }
+}
+
+// ── Content ───────────────────────────────────────────
+.content-area {
+  flex: 1; overflow-y: auto; padding: 16px 24px;
+  scrollbar-width: thin;
+}
+
+// ── CPC ───────────────────────────────────────────────
+.cpc-resultats {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 12px; margin-bottom: 20px;
+}
+.res-card {
+  background: white; border: 1px solid #e2e8f0;
+  border-radius: 10px; padding: 14px 16px;
+  display: flex; flex-direction: column; gap: 4px;
+  &.res-net { border-color: #6366f1; }
+}
+.res-lbl { font-size: 11px; color: #64748b; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.04em; }
+.res-val { font-size: 18px; font-weight: 800; font-family: monospace; }
+.positif { color: #16a34a; }
+.negatif { color: #dc2626; }
+
+.cpc-rubrique { background: white; border-radius: 10px;
+  border: 1px solid #e2e8f0; margin-bottom: 12px; overflow: hidden; }
+.rubrique-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 10px 16px; font-size: 13px; font-weight: 700;
+  &.produit  { background: #f0fdf4; color: #166534; }
+  &.charge   { background: #fef2f2; color: #991b1b; }
+  &.resultat { background: #eef2ff; color: #3730a3; }
+}
+.rubrique-total { font-family: monospace; font-size: 14px; }
+.rubrique-ligne {
+  display: flex; align-items: center; gap: 12px;
+  padding: 7px 16px; border-top: 1px solid #f8fafc;
+  font-size: 12px;
+  &:hover { background: #f8fafc; }
+}
+.ligne-compte  { width: 60px; font-weight: 600; color: #6366f1; flex-shrink: 0; }
+.ligne-libelle { flex: 1; color: #374151; }
+.ligne-montant { font-family: monospace; color: #0f172a; }
+
+// ── Table commune ─────────────────────────────────────
+.data-table {
+  width: 100%; border-collapse: collapse; font-size: 13px;
+  background: white; border-radius: 10px; overflow: hidden;
+  border: 1px solid #e2e8f0;
+  th {
+    background: #f8fafc; padding: 10px 14px;
+    font-size: 11px; font-weight: 700; color: #64748b;
+    text-transform: uppercase; border-bottom: 2px solid #e2e8f0;
+    text-align: left;
+    &.col-num { text-align: right; }
+  }
+  td {
+    padding: 9px 14px; border-bottom: 1px solid #f8fafc;
+    &.col-num { text-align: right; font-family: monospace; }
+  }
+  tbody tr:hover { background: #f8fafc; }
+  tfoot .total-row {
+    background: #f1f5f9; font-weight: 700;
+    td { border-top: 2px solid #e2e8f0; }
+  }
+}
+.cell-compte { font-weight: 700; color: #6366f1; }
+.cell-date   { color: #64748b; white-space: nowrap; }
+.cell-piece  { font-size: 11px; color: #94a3b8; font-family: monospace; }
+.solde-debiteur  { color: #dc2626; font-weight: 700; }
+.solde-crediteur { color: #16a34a; font-weight: 700; }
+
+.badge-journal {
+  display: inline-block; padding: 2px 6px; border-radius: 4px;
+  background: #eef2ff; color: #4338ca;
+  font-size: 10px; font-weight: 700; font-family: monospace;
+}
+
+// ── Grand-livre header ────────────────────────────────
+.gl-header {
+  display: flex; align-items: center; gap: 8px;
+  padding: 12px 16px; background: white;
+  border: 1px solid #e2e8f0; border-radius: 10px;
+  margin-bottom: 12px; font-size: 13px; color: #374151;
+  mat-icon { color: #6366f1; font-size: 18px; }
+  strong { color: #6366f1; }
+}
+
+// ── Empty ─────────────────────────────────────────────
+.empty-state {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 12px; color: #94a3b8; padding: 60px;
+  mat-icon { font-size: 52px; width: 52px; height: 52px; }
+  p { font-size: 14px; }
+}

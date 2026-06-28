@@ -1,0 +1,392 @@
+<div class="dir-layout">
+
+  <!-- ══ SIDEBAR ════════════════════════════════════════════════ -->
+  <aside class="sidebar">
+    <div class="sidebar-top">
+      <div class="brand">
+        <span class="brand-dot"></span>Compta<strong>Assist</strong>
+      </div>
+
+      <nav>
+        @for (item of navItems; track item.route) {
+          <a [routerLink]="item.route"
+             routerLinkActive="active"
+             [routerLinkActiveOptions]="{exact: item.route === '/directeur'}"
+             class="nav-link">
+            <mat-icon>{{ item.icon }}</mat-icon>
+            <span>{{ item.label }}</span>
+          </a>
+        }
+      </nav>
+    </div>
+
+    <div class="sidebar-bottom">
+      <div class="user-row">
+        <div class="user-av">
+          {{ currentUser()?.prenom?.charAt(0) }}{{ currentUser()?.nom?.charAt(0) }}
+        </div>
+        <div class="user-text">
+          <strong>{{ currentUser()?.prenom }} {{ currentUser()?.nom }}</strong>
+          <span>Directeur</span>
+        </div>
+        <button class="logout-btn" (click)="logout()">
+          <mat-icon>logout</mat-icon>
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ══ MAIN ══════════════════════════════════════════════════ -->
+  <main class="main">
+
+    <div class="main-header">
+      <div>
+        <p class="greeting-label">Directeur</p>
+        <h1 class="greeting">Mes clients</h1>
+        <p class="sub">{{ clients().length }} dossier(s) actif(s)</p>
+      </div>
+      <button class="btn-new" (click)="showForm.set(true)">
+        <mat-icon>add</mat-icon>
+        Nouveau client
+      </button>
+    </div>
+
+    <!-- Barre de recherche -->
+    <div class="search-bar">
+      <mat-icon>search</mat-icon>
+      <input type="text"
+             placeholder="Rechercher par nom ou numéro fiscal…"
+             [value]="search()"
+             (input)="search.set($any($event.target).value)" />
+    </div>
+
+    <!-- Formulaire nouveau client -->
+    @if (showForm()) {
+      <div class="form-card">
+        <div class="form-card-header">
+          <h3>Nouveau dossier client</h3>
+          <button class="close-btn" (click)="showForm.set(false)">
+            <mat-icon>close</mat-icon>
+          </button>
+        </div>
+        <form [formGroup]="form" (ngSubmit)="creer()" class="client-form">
+          <div class="form-grid">
+
+            <div class="field">
+              <label>Nom de l'entreprise *</label>
+              <input formControlName="nomEntreprise" placeholder="SARL Atlas" />
+            </div>
+
+            <div class="field">
+              <label>Numéro fiscal *</label>
+              <input formControlName="numeroFiscal" placeholder="12345678" />
+            </div>
+
+            <div class="field">
+              <label>ICE</label>
+              <input formControlName="ice" placeholder="001234567000012" />
+            </div>
+
+            <div class="field">
+              <label>Capital social (MAD)</label>
+              <input formControlName="capitalSocial" type="number"
+                     placeholder="100000" />
+            </div>
+
+            <div class="field">
+              <label>Secteur</label>
+              <select formControlName="secteur">
+                <option value="">—</option>
+                <option value="BTP">BTP</option>
+                <option value="Commerce">Commerce</option>
+                <option value="Industrie">Industrie</option>
+                <option value="Services">Services</option>
+                <option value="Agriculture">Agriculture</option>
+                <option value="Finance">Finance</option>
+                <option value="Santé">Santé</option>
+              </select>
+            </div>
+
+            <div class="field">
+              <label>Email</label>
+              <input formControlName="email" type="email"
+                     placeholder="contact@entreprise.ma" />
+            </div>
+
+            <div class="field">
+              <label>Téléphone</label>
+              <input formControlName="telephone" placeholder="0600000000" />
+            </div>
+
+            <div class="field full">
+              <label>Adresse</label>
+              <input formControlName="adresse"
+                     placeholder="Casablanca, Maroc" />
+            </div>
+
+            <div class="field full">
+              <label>Comptable responsable (optionnel)</label>
+              <select formControlName="comptableId">
+                <option value="">Aucun pour l'instant</option>
+                @for (m of membres(); track m.id) {
+                  <option [value]="m.userId">
+                    {{ m.prenom }} {{ m.nom }} — {{ m.email }}
+                  </option>
+                }
+              </select>
+            </div>
+
+          </div>
+
+          <div class="form-actions">
+            <button type="button" class="btn-cancel"
+                    (click)="showForm.set(false)">
+              Annuler
+            </button>
+            <button type="submit" class="btn-new"
+                    [disabled]="form.invalid || loading()">
+              <mat-icon>save</mat-icon>
+              Créer le dossier
+            </button>
+          </div>
+        </form>
+      </div>
+    }
+
+    <!-- Table clients -->
+    <div class="panel">
+      @if (filteredClients.length === 0) {
+        <div class="panel-empty">
+          <mat-icon>folder_open</mat-icon>
+          <p>Aucun client trouvé</p>
+        </div>
+      } @else {
+        <div class="table-wrap">
+          <div class="t-head">
+            <span>Client</span>
+            <span>N° Fiscal</span>
+            <span>Secteur</span>
+            <span>Email</span>
+            <span>Statut</span>
+            <span></span>
+          </div>
+          @for (client of filteredClients; track client.id) {
+            <div class="t-row">
+              <div class="c-name">
+                <div class="c-av">{{ client.nomEntreprise.charAt(0) }}</div>
+                <span>{{ client.nomEntreprise }}</span>
+              </div>
+              <span class="mono">{{ client.numeroFiscal }}</span>
+              <span class="muted">{{ client.secteur || '—' }}</span>
+              <span class="muted">{{ client.email || '—' }}</span>
+              <span class="badge" [class.on]="client.actif"
+                    [class.off]="!client.actif">
+                {{ client.actif ? 'Actif' : 'Inactif' }}
+              </span>
+
+
+
+              <div class="t-actions">
+                <button class="detail-btn" matTooltip="Voir le dossier"
+                        (click)="ouvrirDetail(client.id)">
+                  <mat-icon>visibility</mat-icon>
+                </button>
+                <button class="del-btn" matTooltip="Désactiver"
+                        (click)="desactiver(client.id)">
+                  <mat-icon>delete</mat-icon>
+                </button>
+              </div>
+            </div>
+          }
+        </div>
+      }
+    </div>
+
+    <!-- ══ MODAL DÉTAIL CLIENT ══════════════════════════════════ -->
+    @if (showDetailModal()) {
+      <div class="modal-overlay" (click)="fermerDetail()">
+        <div class="modal-card" (click)="$event.stopPropagation()">
+
+          <button class="modal-close" (click)="fermerDetail()">
+            <mat-icon>close</mat-icon>
+          </button>
+
+          @if (loadingDetail()) {
+            <div class="modal-loading">
+              <div class="loader"></div>
+              <span>Chargement du dossier…</span>
+            </div>
+          } @else if (detailClient()) {
+
+            <div class="modal-header">
+              <div class="modal-avatar">
+                {{ detailClient()!.client.nomEntreprise.charAt(0) }}
+              </div>
+              <div class="modal-header-text">
+                <h2>{{ detailClient()!.client.nomEntreprise }}</h2>
+                <span class="modal-sub">
+                  {{ detailClient()!.client.numeroFiscal }}
+                </span>
+              </div>
+              <span class="badge"
+                    [class.on]="detailClient()!.client.actif"
+                    [class.off]="!detailClient()!.client.actif">
+                {{ detailClient()!.client.actif ? 'Actif' : 'Inactif' }}
+              </span>
+            </div>
+
+            <div class="modal-body">
+
+              <!-- Infos générales -->
+              <section class="modal-section">
+                <h3>
+                  <mat-icon>info</mat-icon>
+                  Informations générales
+                </h3>
+                <div class="info-grid">
+                  <div class="info-item">
+                    <span class="info-label">ICE</span>
+                    <span class="info-value">
+                      {{ detailClient()!.client.ice || '—' }}
+                    </span>
+                  </div>
+                  <div class="info-item">
+                    <span class="info-label">Email</span>
+                    <span class="info-value">
+                      {{ detailClient()!.client.email || '—' }}
+                    </span>
+                  </div>
+                  <div class="info-item">
+                    <span class="info-label">Téléphone</span>
+                    <span class="info-value">
+                      {{ detailClient()!.client.telephone || '—' }}
+                    </span>
+                  </div>
+                  <div class="info-item">
+                    <span class="info-label">Secteur</span>
+                    <span class="info-value">
+                      {{ detailClient()!.client.secteur || '—' }}
+                    </span>
+                  </div>
+                  <div class="info-item full">
+                    <span class="info-label">Adresse</span>
+                    <span class="info-value">
+                      {{ detailClient()!.client.adresse || '—' }}
+                    </span>
+                  </div>
+                  <div class="info-item">
+                    <span class="info-label">Capital social</span>
+                    <span class="info-value">
+                      {{ detailClient()!.client.capitalSocial || 0 }} MAD
+                    </span>
+                  </div>
+                  <div class="info-item">
+                    <span class="info-label">Comptable</span>
+                    <span class="info-value">
+    {{ detailClient()!.comptableNom || 'Non assigné' }}
+  </span>
+                  </div>
+                </div>
+              </section>
+
+              <!-- Documents -->
+              <section class="modal-section">
+                <h3>
+                  <mat-icon>description</mat-icon>
+                  Documents déposés
+                  ({{ detailClient()!.factures.length }})
+                </h3>
+
+                @if (detailClient()!.factures.length === 0) {
+                  <p class="empty-text">Aucun document déposé</p>
+                } @else {
+                  <div class="doc-list">
+                    @for (f of detailClient()!.factures.slice(0, 10); track f.id) {
+                      <div class="doc-row">
+                        <mat-icon class="doc-icon">
+                          {{ f.numeroFacture ? 'receipt_long' : 'description' }}
+                        </mat-icon>
+                        <div class="doc-info">
+                          <strong>
+                            {{ f.numeroFacture || 'Sans numéro' }}
+                          </strong>
+                          <span>
+                            {{ f.fournisseur || f.client || '—' }}
+                            @if (f.montantTtc) {
+                              · {{ f.montantTtc }} MAD
+                            }
+                          </span>
+                        </div>
+                        <span class="doc-statut"
+                              [class]="getDocStatutClass(f.statut)">
+                          {{ f.statut }}
+                        </span>
+                      </div>
+                    }
+                  </div>
+                }
+              </section>
+
+              <!-- Écritures comptables -->
+              <section class="modal-section">
+                <h3>
+                  <mat-icon>menu_book</mat-icon>
+                  Écritures comptables
+                  ({{ detailClient()!.ecritures.length }})
+                </h3>
+                @if (detailClient()!.ecritures.length === 0) {
+                  <p class="empty-text">Aucune écriture comptable</p>
+                } @else {
+                  <div class="doc-list">
+                    @for (e of detailClient()!.ecritures.slice(0, 10); track e.id) {
+                      <div class="doc-row">
+                        <mat-icon class="doc-icon">receipt</mat-icon>
+                        <div class="doc-info">
+                          <strong>{{ e.compte }} — {{ e.intituleCompte }}</strong>
+                          <span>{{ e.dateEcriture | date:'dd/MM/yyyy' }} · {{ e.journal }}</span>
+                        </div>
+                        <span class="doc-statut nouveau">
+            {{ e.debit > 0 ? ('Débit ' + e.debit) : ('Crédit ' + e.credit) }} MAD
+          </span>
+                      </div>
+                    }
+                  </div>
+                }
+              </section>
+
+              <!-- Déclarations TVA -->
+              <section class="modal-section">
+                <h3>
+                  <mat-icon>assignment</mat-icon>
+                  Déclarations TVA ({{ detailClient()!.declarationsTva.length }})
+                </h3>
+                @if (detailClient()!.declarationsTva.length === 0) {
+                  <p class="empty-text">Aucune déclaration TVA</p>
+                } @else {
+                  <div class="doc-list">
+                    @for (d of detailClient()!.declarationsTva.slice(0, 6); track d.id) {
+                      <div class="doc-row">
+                        <mat-icon class="doc-icon">request_quote</mat-icon>
+                        <div class="doc-info">
+                          <strong>{{ d.periodeLabel }}</strong>
+                          <span>TVA nette : {{ d.tvaNette }} MAD · Limite : {{ d.dateLimite | date:'dd/MM/yyyy' }}</span>
+                        </div>
+                        <span class="doc-statut"
+                              [class]="getTvaStatutClass(d.statut)">
+            {{ d.statut }}
+          </span>
+                      </div>
+                    }
+                  </div>
+                }
+              </section>
+
+            </div>
+
+          }
+        </div>
+      </div>
+    }
+
+  </main>
+</div>

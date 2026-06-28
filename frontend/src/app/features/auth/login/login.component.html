@@ -1,0 +1,88 @@
+<div class="auth-layout">
+  <!-- Panneau gauche -->
+  <div class="auth-left">
+    <div class="auth-left-content">
+      <a routerLink="/" class="back-home">
+        <mat-icon>arrow_back</mat-icon>
+        Retour à l'accueil
+      </a>
+      <div class="brand">
+        <mat-icon class="brand-icon">account_balance</mat-icon>
+        <span>Compta<strong>Assist</strong></span>
+      </div>
+      <h1>Bon retour !</h1>
+      <p>Connectez-vous pour accéder à votre espace de comptabilité intelligente.</p>
+
+      <div class="features-list">
+        <div class="feature-item">
+          <mat-icon>auto_awesome</mat-icon>
+          <span>Assistant IA fiscal 24/7</span>
+        </div>
+        <div class="feature-item">
+          <mat-icon>analytics</mat-icon>
+          <span>Analyse de bilan automatique</span>
+        </div>
+        <div class="feature-item">
+          <mat-icon>notifications_active</mat-icon>
+          <span>Alertes fiscales en temps réel</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Panneau droit -->
+  <div class="auth-right">
+    <div class="auth-card">
+      <div class="auth-card-header">
+        <h2>Connexion</h2>
+        <p>Entrez vos identifiants pour continuer</p>
+      </div>
+
+      <form [formGroup]="form" (ngSubmit)="onSubmit()" class="auth-form">
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Adresse email</mat-label>
+          <mat-icon matPrefix>email</mat-icon>
+          <input matInput type="email" formControlName="email" placeholder="vous@cabinet.ma" autocomplete="email" />
+          @if (form.get('email')?.hasError('required') && form.get('email')?.touched) {
+            <mat-error>L'email est requis</mat-error>
+          }
+          @if (form.get('email')?.hasError('email') && form.get('email')?.touched) {
+            <mat-error>Format email invalide</mat-error>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Mot de passe</mat-label>
+          <mat-icon matPrefix>lock</mat-icon>
+          <input matInput [type]="hidePassword() ? 'password' : 'text'"
+                 formControlName="password" placeholder="••••••••" autocomplete="current-password" />
+          <button mat-icon-button matSuffix type="button"
+                  (click)="hidePassword.set(!hidePassword())"
+                  [attr.aria-label]="'Afficher/Masquer mot de passe'">
+            <mat-icon>{{ hidePassword() ? 'visibility' : 'visibility_off' }}</mat-icon>
+          </button>
+          @if (form.get('password')?.hasError('required') && form.get('password')?.touched) {
+            <mat-error>Le mot de passe est requis</mat-error>
+          }
+          @if (form.get('password')?.hasError('minlength') && form.get('password')?.touched) {
+            <mat-error>8 caractères minimum</mat-error>
+          }
+        </mat-form-field>
+
+        <button mat-flat-button type="submit"
+                class="submit-btn"
+                [disabled]="form.invalid || loading()">
+          @if (loading()) {
+            <mat-spinner diameter="20" class="inline-spinner"></mat-spinner>
+            Connexion...
+          } @else {
+            <mat-icon>login</mat-icon>
+            Se connecter
+          }
+        </button>
+      </form>
+
+
+    </div>
+  </div>
+</div>

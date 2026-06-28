@@ -1,0 +1,77 @@
+<!-- ✅ Notification TVA en retard — visible sur toutes les pages -->
+<app-tva-notification></app-tva-notification>
+<app-rapport-toast></app-rapport-toast>
+<aside class="sidebar">
+
+  <!-- Logo -->
+  <div class="sidebar-logo">
+    <span class="logo-text">Compta<strong>Assist</strong></span>
+  </div>
+
+  <!-- ── Sélecteur de client actif (dropdown) ── -->
+  <div class="client-selector">
+    <div class="client-selector-label">
+      <mat-icon>people</mat-icon>
+      <span>Client actif</span>
+    </div>
+
+    @if (loading()) {
+      <div class="clients-loading">
+        <mat-icon class="spin">refresh</mat-icon>
+      </div>
+    } @else {
+      <div class="select-wrapper">
+        <select class="client-select"
+                [ngModel]="clientCtx.clientActif()?.id ?? ''"
+                (ngModelChange)="onSelectChange($event)">
+          <option value="" disabled>Sélectionner un client</option>
+          @for (c of clientCtx.clients(); track c.id) {
+            <option [value]="c.id">
+              {{ c.nomEntreprise }}
+              @if (c.secteur) { — {{ c.secteur }} }
+            </option>
+          }
+        </select>
+        <mat-icon class="select-chevron">expand_more</mat-icon>
+      </div>
+
+      @if (clientCtx.clients().length === 0) {
+        <div class="no-clients">Aucun client assigné</div>
+      }
+    }
+  </div>
+
+  <!-- ── Navigation ── -->
+  <nav class="sidebar-nav">
+    @for (item of navItems; track item.route) {
+      <a class="nav-item"
+         [routerLink]="item.route"
+         routerLinkActive="active"
+         [matTooltip]="item.label"
+         matTooltipPosition="right">
+        <mat-icon>{{ item.icon }}</mat-icon>
+        <span>{{ item.label }}</span>
+      </a>
+    }
+  </nav>
+
+  <!-- ── Footer ── -->
+  <div class="sidebar-footer">
+    <div class="user-info">
+      <div class="user-avatar">
+        {{ getAvatar(currentUser()?.prenom) }}
+      </div>
+      <div class="user-details">
+        <span class="user-nom">
+          {{ currentUser()?.prenom }} {{ currentUser()?.nom }}
+        </span>
+        <span class="user-role">Comptable</span>
+      </div>
+    </div>
+    <button class="logout-btn" (click)="deconnecter()"
+            matTooltip="Se déconnecter">
+      <mat-icon>logout</mat-icon>
+    </button>
+  </div>
+
+</aside>

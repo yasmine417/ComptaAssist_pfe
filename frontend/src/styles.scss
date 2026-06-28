@@ -1,0 +1,141 @@
+@use '@angular/material' as mat;
+
+// ── Palette principale : Bleu profond ComptaAssist ──────────────────────────
+:root {
+  --ca-primary:       #1a3d6b;
+  --ca-primary-light: #2563a8;
+  --ca-accent:        #f59e0b;
+  --ca-accent-light:  #fbbf24;
+  --ca-success:       #10b981;
+  --ca-danger:        #ef4444;
+  --ca-warning:       #f59e0b;
+  --ca-info:          #3b82f6;
+  --ca-bg:            #f8fafc;
+  --ca-surface:       #ffffff;
+  --ca-text:          #1e293b;
+  --ca-text-muted:    #64748b;
+  --ca-border:        #e2e8f0;
+  --ca-shadow:        0 4px 24px rgba(26, 61, 107, 0.08);
+  --ca-radius:        12px;
+  --ca-radius-sm:     8px;
+}
+
+html {
+  @include mat.theme((
+    color: (
+      primary: mat.$azure-palette,
+      tertiary: mat.$orange-palette,
+    ),
+    typography: Roboto,
+    density: 0,
+  ));
+  color-scheme: light;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Roboto', 'Inter', 'Helvetica Neue', sans-serif;
+  background-color: var(--ca-bg);
+  color: var(--ca-text);
+  line-height: 1.6;
+}
+
+// ── Utilitaires ──────────────────────────────────────────────────────────────
+.ca-card {
+  background: var(--ca-surface);
+  border-radius: var(--ca-radius);
+  box-shadow: var(--ca-shadow);
+  border: 1px solid var(--ca-border);
+  padding: 24px;
+}
+
+.ca-btn-primary {
+  background: var(--ca-primary) !important;
+  color: white !important;
+  border-radius: var(--ca-radius-sm) !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.3px !important;
+  transition: background 0.2s, transform 0.1s !important;
+  &:hover { background: var(--ca-primary-light) !important; transform: translateY(-1px); }
+}
+
+.ca-btn-accent {
+  background: var(--ca-accent) !important;
+  color: white !important;
+  border-radius: var(--ca-radius-sm) !important;
+  font-weight: 600 !important;
+}
+
+.badge-success { background: #d1fae5; color: #065f46; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+.badge-warning { background: #fef3c7; color: #92400e; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+.badge-danger  { background: #fee2e2; color: #991b1b; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+.badge-info    { background: #dbeafe; color: #1e40af; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+
+// ── Animations ───────────────────────────────────────────────────────────────
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(-20px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+.animate-fade-in-up   { animation: fadeInUp 0.4s ease forwards; }
+.animate-slide-in-left { animation: slideInLeft 0.3s ease forwards; }
+
+// ── Scrollbar ─────────────────────────────────────────────────────────────
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #f1f5f9; }
+::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+// ── Overrides Material ────────────────────────────────────────────────────
+.mat-mdc-form-field-flex { background: var(--ca-surface) !important; }
+
+.mat-mdc-snack-bar-container {
+  &.success-snack { --mdc-snackbar-container-color: #065f46; }
+  &.error-snack   { --mdc-snackbar-container-color: #991b1b; }
+}
+
+.chat-notif {
+  &.mat-mdc-snack-bar-container {
+    --mdc-snackbar-container-color: #ffffff;
+    padding: 0 !important;
+    border-radius: 14px !important;
+    box-shadow: 0 8px 30px rgba(108,99,255,0.15),
+    0 2px 8px rgba(0,0,0,0.08) !important;
+    min-width: 300px !important;
+    max-width: 380px !important;
+    border-left: 4px solid #6c63ff !important;
+  }
+
+  .mdc-snackbar__surface {
+    background:    white !important;
+    border-radius: 14px !important;
+    padding:       0 !important;
+    box-shadow:    none !important;
+  }
+
+  .mdc-snackbar__label {
+    color:       #1a1d2e !important;
+    font-size:   13px !important;
+    font-weight: 500 !important;
+    padding:     14px 16px !important;
+    line-height: 1.5 !important;
+  }
+
+  .mdc-button__label {
+    color:       #6c63ff !important;
+    font-weight: 700 !important;
+    font-size:   12px !important;
+  }
+}

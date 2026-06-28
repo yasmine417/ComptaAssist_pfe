@@ -1,0 +1,268 @@
+<!-- ═══ HEADER ═══════════════════════════════════════════════════════════ -->
+<header class="header" [class.scrolled]="isScrolled">
+  <div class="header-inner">
+    <a class="logo" routerLink="/">
+      <div class="logo-mark">
+        <mat-icon>account_balance</mat-icon>
+      </div>
+
+      <span class="logo-text"><strong>Compta</strong>Assist</span>
+    </a>
+
+    <nav class="nav-links">
+      <a href="#features" (click)="scrollTo($event, 'features')">Fonctionnalités</a>
+      <a href="#roles" (click)="scrollTo($event, 'roles')">Rôles</a>
+      <a href="#stats" (click)="scrollTo($event, 'stats')">Chiffres clés</a>
+    </nav>
+
+    <div class="header-actions">
+
+      <a routerLink="/auth/login" class="btn-cta">
+        Se connecter
+        <mat-icon>arrow_forward</mat-icon>
+      </a>
+    </div>
+
+    <button class="menu-toggle" (click)="menuOpen = !menuOpen">
+      <mat-icon>{{ menuOpen ? 'close' : 'menu' }}</mat-icon>
+    </button>
+  </div>
+
+  <div class="mobile-menu" [class.open]="menuOpen">
+    <a href="#features" (click)="menuOpen=false">Fonctionnalités</a>
+    <a href="#roles" (click)="menuOpen=false">Rôles</a>
+    <a routerLink="/auth/login" class="btn-cta-mobile" (click)="menuOpen=false">Se connecter</a>
+  </div>
+</header>
+
+<!-- ═══ HERO ══════════════════════════════════════════════════════════════ -->
+<section class="hero">
+  <div class="hero-bg-grid"></div>
+  <div class="hero-glow"></div>
+
+  <div class="hero-content reveal">
+    <div class="hero-eyebrow">
+      <span class="eyebrow-dot"></span>
+      Plateforme IA · Comptabilité marocaine · CGI intégré
+    </div>
+
+    <h1 class="hero-title">
+      Votre cabinet,<br>
+      <em>augmenté par l'IA</em>
+    </h1>
+
+    <p class="hero-desc">
+      ComptaAssist analyse vos factures, répond à vos questions fiscales
+      et génère vos rapports — en quelques secondes. Conçu pour les
+      experts-comptables du Maroc.
+    </p>
+
+    <div class="hero-actions">
+      <a href="#features"
+         (click)="scrollTo($event, 'features')"
+         class="btn-primary-lg">
+        Découvrir les fonctionnalités
+        <mat-icon>east</mat-icon>
+      </a>
+      <a routerLink="/auth/login" class="btn-secondary-lg">
+        <mat-icon>login</mat-icon>
+        Accéder à la plateforme
+      </a>
+    </div>
+    <div class="hero-proof">
+
+      <div class="proof-sep"></div>
+      <div class="proof-item">
+        <mat-icon>lock</mat-icon>
+        <span>Données sécurisées</span>
+      </div>
+      <div class="proof-sep"></div>
+      <div class="proof-item">
+        <mat-icon>bolt</mat-icon>
+        <span>Analyse IA en temps réel</span>
+      </div>
+    </div>
+
+
+
+
+  </div>
+
+  <!-- Terminal / UI mockup -->
+  <div class="hero-mockup reveal-right">
+    <div class="mockup-window">
+      <div class="window-bar">
+        <span class="dot r"></span>
+        <span class="dot y"></span>
+        <span class="dot g"></span>
+        <span class="window-title">Assistant fiscal IA</span>
+      </div>
+      <div class="window-body">
+        <div class="chat-line user">
+          <span class="chat-avatar user-av">YB</span>
+          <div class="chat-bubble user-bubble">
+            Quel taux TVA pour les prestations de conseil ?
+          </div>
+        </div>
+        <div class="chat-line ai">
+          <span class="chat-avatar ai-av">
+            <mat-icon>auto_awesome</mat-icon>
+          </span>
+          <div class="chat-bubble ai-bubble">
+            Selon l'<strong>article 98 du CGI</strong>, les prestations
+            de conseil sont soumises au taux normal de
+            <strong>20%</strong>. Ce taux s'applique dès le premier
+            dirham de chiffre d'affaires.
+            <div class="source-tag">
+              <mat-icon>menu_book</mat-icon>
+              Source : CGI_2024 · Art. 98
+            </div>
+          </div>
+        </div>
+        <div class="chat-typing">
+          <span></span><span></span><span></span>
+        </div>
+      </div>
+      <div class="window-input">
+        <span>Posez votre question fiscale...</span>
+        <button><mat-icon>send</mat-icon></button>
+      </div>
+    </div>
+
+    <!-- Floating cards -->
+    <div class="float-card card-1">
+      <mat-icon>analytics</mat-icon>
+      <div>
+        <strong>+72%</strong>
+        <span>Marge bénéficiaire</span>
+      </div>
+    </div>
+    <div class="float-card card-2">
+      <mat-icon>check_circle</mat-icon>
+      <div>
+        <strong>3 610</strong>
+        <span>Articles indexés</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ STATS ══════════════════════════════════════════════════════════════ -->
+<section class="stats-band" id="stats">
+  <div class="stats-inner">
+    @for (stat of stats; track stat.value) {
+      <div class="stat-block reveal-up">
+        <span class="stat-val">{{ stat.value }}</span>
+        <span class="stat-lbl">{{ stat.label }}</span>
+      </div>
+    }
+  </div>
+</section>
+
+<!-- ═══ FEATURES ═══════════════════════════════════════════════════════════ -->
+<section class="features" id="features">
+  <div class="section-eyebrow reveal">Fonctionnalités</div>
+  <h2 class="section-title reveal">Tout ce dont votre cabinet a besoin</h2>
+  <p class="section-sub reveal">
+    Une plateforme complète qui automatise les tâches répétitives
+    et amplifie l'expertise de vos comptables.
+  </p>
+
+  <div class="features-grid">
+    @for (f of features; track f.title; let i = $index) {
+      <div class="feat-card reveal-up" [style.animation-delay]="(i * 80) + 'ms'">
+        <div class="feat-icon" [style.--icon-color]="f.color">
+          <mat-icon>{{ f.icon }}</mat-icon>
+        </div>
+        <h3>{{ f.title }}</h3>
+        <p>{{ f.desc }}</p>
+        <div class="feat-arrow">
+          <mat-icon>arrow_forward</mat-icon>
+        </div>
+      </div>
+    }
+  </div>
+</section>
+
+<!-- ═══ ROLES ═══════════════════════════════════════════════════════════════ -->
+<section class="roles" id="roles">
+  <div class="roles-inner">
+    <div class="roles-text">
+      <div class="section-eyebrow reveal">Profils utilisateurs</div>
+      <h2 class="section-title reveal">Une interface pensée pour chaque rôle</h2>
+      <p class="section-sub reveal">
+        Chaque profil dispose d'un espace dédié, d'outils adaptés
+        et d'un niveau d'accès sécurisé.
+      </p>
+      <a routerLink="/auth/register" class="btn-primary-lg reveal">
+        Commencer maintenant
+        <mat-icon>east</mat-icon>
+      </a>
+    </div>
+
+    <div class="roles-cards">
+      @for (r of roles; track r.title; let i = $index) {
+        <div class="role-card reveal-right" [style.animation-delay]="(i * 100) + 'ms'">
+          <div class="role-header" [style.background]="r.gradient">
+            <mat-icon>{{ r.icon }}</mat-icon>
+            <span>{{ r.title }}</span>
+          </div>
+          <div class="role-body">
+            <p>{{ r.desc }}</p>
+            <ul>
+              @for (item of r.items; track item) {
+                <li>
+                  <mat-icon>check</mat-icon>
+                  {{ item }}
+                </li>
+              }
+            </ul>
+          </div>
+        </div>
+      }
+    </div>
+  </div>
+</section>
+
+<!-- ═══ CTA ════════════════════════════════════════════════════════════════ -->
+<section class="cta-section">
+  <div class="cta-bg"></div>
+  <div class="cta-content reveal">
+    <div class="cta-badge">
+      <mat-icon>auto_awesome</mat-icon>
+      Propulsé par Groq · ChromaDB · Spring Boot
+    </div>
+    <h2>Prêt à transformer votre cabinet ?</h2>
+    <p>
+      Rejoignez les cabinets qui font confiance à ComptaAssist
+      pour gagner du temps et améliorer leur précision.
+    </p>
+    <div class="cta-btns">
+
+      <a routerLink="/auth/login" class="btn-outline-white">
+        Se connecter
+        <mat-icon>east</mat-icon>
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ FOOTER ═════════════════════════════════════════════════════════════ -->
+<footer class="footer">
+  <div class="footer-inner">
+    <div class="footer-brand">
+      <mat-icon>account_balance</mat-icon>
+      <span>Compta<strong>Assist</strong></span>
+    </div>
+    <p class="footer-copy">
+      © 2026 ComptaAssist - Développé par 6Solutions
+    </p>
+    <div class="footer-links">
+      <a routerLink="/auth/login">Connexion</a>
+      <a href="#features"
+         (click)="scrollTo($event, 'features')">
+        Fonctionnalités
+      </a>
+    </div>
+  </div>
+</footer>

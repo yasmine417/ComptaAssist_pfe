@@ -1,0 +1,7 @@
+CREATE DATABASE auth_db;
+CREATE DATABASE cabinet_db;
+CREATE DATABASE document_db;
+CREATE DATABASE fiscal_rag_db;
+CREATE DATABASE facture_db;
+CREATE DATABASE tva_db;
+CREATE DATABASE chat_db;

@@ -1,0 +1,32 @@
+{
+  "20": {
+    "libelle": "Taux normal",
+    "compte_collecte": "4455",
+    "compte_deductible": "3455",
+    "description": "Taux général — toutes opérations non exonérées"
+  },
+  "14": {
+    "libelle": "Taux réduit",
+    "compte_collecte": "4455",
+    "compte_deductible": "3455",
+    "description": "Carburants, eau, transport de voyageurs"
+  },
+  "10": {
+    "libelle": "Taux réduit",
+    "compte_collecte": "4455",
+    "compte_deductible": "3455",
+    "description": "Hôtellerie, restauration, banques"
+  },
+  "7": {
+    "libelle": "Taux réduit",
+    "compte_collecte": "4455",
+    "compte_deductible": "3455",
+    "description": "Eau potable, médicaments, fournitures scolaires"
+  },
+  "0": {
+    "libelle": "Exonéré",
+    "compte_collecte": null,
+    "compte_deductible": null,
+    "description": "Exportations, produits exonérés"
+  }
+}

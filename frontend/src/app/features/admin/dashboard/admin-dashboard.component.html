@@ -1,0 +1,278 @@
+<div class="admin-layout">
+
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <mat-icon>account_balance</mat-icon>
+      <span>Compta<strong>Assist</strong></span>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">Administration</div>
+      <a class="nav-item active" routerLink="/admin">
+        <mat-icon>upload_file</mat-icon>
+        <span>Documents de référence</span>
+      </a>
+      <a class="nav-item" routerLink="/admin/utilisateurs">
+        <mat-icon>manage_accounts</mat-icon>
+        <span>Gestion utilisateurs</span>
+      </a>
+      <a class="nav-item" routerLink="/admin/audit">
+        <mat-icon>history</mat-icon>
+        <span>Logs d'audit</span>
+      </a>
+    </nav>
+    <div class="sidebar-user">
+      <div class="user-avatar admin">
+        <mat-icon>admin_panel_settings</mat-icon>
+      </div>
+      <div class="user-info">
+        <span class="user-name">
+          {{ currentUser()?.prenom }}
+          {{ currentUser()?.nom }}
+        </span>
+        <span class="user-role">Administrateur</span>
+      </div>
+      <button mat-icon-button (click)="logout()"
+              matTooltip="Déconnexion">
+        <mat-icon>logout</mat-icon>
+      </button>
+    </div>
+  </aside>
+
+  <main class="main-content">
+
+    <div class="top-bar">
+      <div>
+        <h1 class="page-title">
+          Documents de référence fiscale
+        </h1>
+        <p class="page-sub">
+          Uploadez et indexez les textes législatifs
+          pour l'assistant IA
+        </p>
+      </div>
+      <button mat-flat-button class="btn-index"
+              (click)="indexer()"
+              [disabled]="indexing() || uploading()">
+        @if (indexing()) {
+          <mat-icon>hourglass_empty</mat-icon>
+          Indexation en cours...
+        } @else {
+          <mat-icon>psychology</mat-icon>
+          Indexer dans ChromaDB
+        }
+      </button>
+    </div>
+
+    <!-- INFO BANNER -->
+    <div class="info-banner">
+      <mat-icon>info</mat-icon>
+      <div>
+        <strong>Comment fonctionne l'indexation ?</strong>
+        <p>
+          Uploadez vos PDFs — stockés dans MinIO.
+          Cliquez "Indexer" pour que Python les découpe
+          en blocs vectorisés dans ChromaDB.
+        </p>
+      </div>
+    </div>
+
+    <!-- STATUT RAG -->
+    @if (statutRag()) {
+      <div class="rag-status"
+           [class.ok]="statutRag().statut === 'ok'"
+           [class.vide]="statutRag().statut !== 'ok'">
+        <mat-icon>
+          {{ statutRag().statut === 'ok'
+          ? 'check_circle' : 'warning' }}
+        </mat-icon>
+        <div>
+          <strong>
+            {{ statutRag().statut === 'ok'
+            ? 'Base indexée et prête'
+            : 'Base ChromaDB vide' }}
+          </strong>
+          <span>
+            {{ statutRag().morceaux_chromadb ?? 0 }}
+            morceaux dans ChromaDB
+          </span>
+        </div>
+      </div>
+    }
+
+    <!-- UPLOAD ZONE -->
+    <div class="upload-section">
+      <h2>Uploader des documents PDF</h2>
+
+      <div class="dropzone"
+           [class.active]="dragOver()"
+           (dragover)="onDragOver($event)"
+           (dragleave)="onDragLeave()"
+           (drop)="onDrop($event)">
+        <mat-icon class="drop-icon">cloud_upload</mat-icon>
+        <h3>Glissez vos PDFs ici</h3>
+        <p>CGI 2024, CGNC, Loi de Finances...</p>
+        <label class="upload-btn">
+          <input type="file" accept=".pdf" multiple
+                 (change)="onFileSelect($event)"
+                 hidden
+                 [disabled]="uploading()" />
+          <mat-icon>folder_open</mat-icon>
+          Parcourir les fichiers
+        </label>
+      </div>
+
+      @if (uploading()) {
+        <div style="margin-top:12px">
+          <p style="font-size:13px;color:#4f46e5;
+                    margin-bottom:6px">
+            ⏳ Upload en cours vers MinIO...
+          </p>
+          <mat-progress-bar mode="indeterminate">
+          </mat-progress-bar>
+        </div>
+      }
+    </div>
+
+    <!-- LISTE FICHIERS EN ATTENTE -->
+    @if (fichiersEnAttente().length > 0) {
+      <div class="docs-section">
+        <div class="section-header">
+          <h2>Fichiers ({{ fichiersEnAttente().length }})</h2>
+          <span style="font-size:12px;color:#6b7280">
+            {{ fichiersIndexes }} indexé(s) —
+            {{ fichiersAttente }} en attente
+          </span>
+        </div>
+
+        <div class="docs-list">
+          @for (f of fichiersEnAttente(); track f.nom) {
+            <div class="doc-item">
+              <mat-icon class="doc-icon">picture_as_pdf</mat-icon>
+              <div class="doc-info">
+                <span class="doc-name">{{ f.nom }}</span>
+                <span class="doc-sub">
+                  {{ f.minioObject ? f.minioObject : 'Upload en cours...' }}
+                </span>
+              </div>
+
+              @if (f.statut === 'UPLOADING') {
+                <span class="badge-warning">⏳ Upload...</span>
+              } @else if (f.statut === 'ATTENTE') {
+                <span class="badge-warning">Prêt à indexer</span>
+              } @else if (f.statut === 'INDEXE') {
+                <span class="badge-success">✅ Indexé</span>
+                <button mat-icon-button
+                        matTooltip="Réindexer"
+                        (click)="reindexer(f)">
+                  <mat-icon>refresh</mat-icon>
+                </button>
+              } @else {
+                <span class="badge-danger">❌ Erreur</span>
+              }
+
+              <button mat-icon-button
+                      matTooltip="Retirer"
+                      color="warn"
+                      (click)="supprimerFichier(f.nom)"
+                      [disabled]="f.statut === 'UPLOADING'">
+                <mat-icon>delete</mat-icon>
+              </button>
+            </div>
+          }
+        </div>
+
+        @if (indexing()) {
+          <div style="margin-top:12px">
+            <p style="font-size:13px;color:#4f46e5;margin-bottom:6px">
+              🧠 Indexation IA en cours...
+            </p>
+            <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+          </div>
+        }
+
+        <div class="actions-bar">
+          <button mat-button
+                  (click)="fichiersEnAttente.set([])"
+                  [disabled]="uploading() || indexing()">
+            <mat-icon>clear_all</mat-icon>
+            Vider la liste
+          </button>
+          <button mat-flat-button class="btn-index"
+                  (click)="indexer()"
+                  [disabled]="indexing() || uploading() || fichiersAttente === 0">
+            @if (indexing()) {
+              <mat-icon>hourglass_empty</mat-icon>
+              En cours...
+            } @else {
+              <mat-icon>psychology</mat-icon>
+              Indexer ({{ fichiersAttente }})
+            }
+          </button>
+        </div>
+      </div>
+    }
+
+    <!-- HISTORIQUE -->
+    @if (historique().length > 0) {
+      <div class="docs-section historique-section">
+        <div class="section-header">
+          <h2>
+            <mat-icon style="vertical-align:middle;
+                             margin-right:8px;
+                             font-size:18px">
+              history
+            </mat-icon>
+            Historique des indexations
+          </h2>
+          <span style="font-size:12px;color:#6b7280">
+            {{ historique().length }} document(s) indexé(s)
+          </span>
+        </div>
+
+        <div class="docs-list">
+          @for (h of historique(); track h.id) {
+            <div class="doc-item historique-item">
+              <mat-icon
+                [style.color]="h.statut === 'OK'
+                  ? '#22c55e'
+                  : h.statut === 'DEJA_INDEXE'
+                    ? '#f59e0b' : '#ef4444'">
+                {{ h.statut === 'OK'
+                ? 'check_circle'
+                : h.statut === 'DEJA_INDEXE'
+                  ? 'info' : 'error' }}
+              </mat-icon>
+
+              <div class="doc-info">
+                <span class="doc-name">{{ h.nomDocument }}</span>
+                <span class="doc-sub">
+                  📄 {{ h.nomFichier }}
+                  @if (h.nbMorceaux) {
+                    · {{ h.nbMorceaux }} blocs
+                  }
+                  · {{ h.indexeA | date:'dd/MM/yyyy HH:mm' }}
+                  @if (h.adminEmail) {
+                    · par {{ h.adminEmail }}
+                  }
+                  @if (h.reindexeA) {
+                    · 🔄 réindexé le
+                    {{ h.reindexeA | date:'dd/MM/yyyy HH:mm' }}
+                  }
+                </span>
+              </div>
+
+              @if (h.statut === 'OK') {
+                <span class="badge-success">✅ Indexé</span>
+              } @else if (h.statut === 'DEJA_INDEXE') {
+                <span class="badge-warning">ℹ️ Déjà indexé</span>
+              } @else {
+                <span class="badge-danger">❌ Erreur</span>
+              }
+            </div>
+          }
+        </div>
+      </div>
+    }
+
+  </main>
+</div>

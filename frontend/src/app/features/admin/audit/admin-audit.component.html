@@ -1,0 +1,179 @@
+<div class="admin-layout">
+
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <mat-icon>account_balance</mat-icon>
+      <span>Compta<strong>Assist</strong></span>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">Administration</div>
+      <a class="nav-item" routerLink="/admin">
+        <mat-icon>upload_file</mat-icon>
+        <span>Documents de référence</span>
+      </a>
+      <a class="nav-item" routerLink="/admin/utilisateurs">
+        <mat-icon>manage_accounts</mat-icon>
+        <span>Gestion utilisateurs</span>
+      </a>
+      <a class="nav-item active" routerLink="/admin/audit">
+        <mat-icon>history</mat-icon>
+        <span>Logs d'audit</span>
+      </a>
+    </nav>
+    <div class="sidebar-user">
+      <div class="user-avatar admin">
+        <mat-icon>admin_panel_settings</mat-icon>
+      </div>
+      <div class="user-info">
+        <span class="user-name">
+          {{ currentUser()?.prenom }}
+          {{ currentUser()?.nom }}
+        </span>
+        <span class="user-role">Administrateur</span>
+      </div>
+      <button mat-icon-button (click)="logout()">
+        <mat-icon>logout</mat-icon>
+      </button>
+    </div>
+  </aside>
+
+  <main class="main-content">
+
+    <div class="top-bar">
+      <div>
+        <h1 class="page-title">Logs d'audit</h1>
+        <p class="page-sub">
+          Traçabilité complète de toutes les actions
+        </p>
+      </div>
+      <button mat-flat-button class="btn-refresh"
+              (click)="charger()" [disabled]="loading()">
+        <mat-icon>refresh</mat-icon>
+        Actualiser
+      </button>
+    </div>
+
+    <!-- FILTRES -->
+    <div class="filters-card">
+      <div class="filters-row">
+        <mat-form-field appearance="outline" class="search-field">
+          <mat-label>Rechercher par email</mat-label>
+          <mat-icon matPrefix>search</mat-icon>
+          <input matInput
+                 [value]="searchEmail()"
+                 (input)="searchEmail.set($any($event.target).value)"
+                 placeholder="mohammed@cabinet.ma" />
+        </mat-form-field>
+
+        <div class="action-filters">
+          @for (a of actions; track a) {
+            <button class="filter-chip"
+                    [class.active]="searchAction() === a"
+                    (click)="searchAction.set(a); rechercher()">
+              {{ a === 'TOUTES' ? 'Toutes' : a }}
+            </button>
+          }
+        </div>
+
+        <div class="filter-buttons">
+          <button mat-flat-button class="btn-search"
+                  (click)="rechercher()">
+            <mat-icon>search</mat-icon>
+            Chercher
+          </button>
+          <button mat-button (click)="reinitialiser()">
+            <mat-icon>clear</mat-icon>
+            Réinitialiser
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- LISTE LOGS -->
+    <div class="logs-section">
+      @if (loading()) {
+        <div class="loading-state">
+          <mat-icon class="spin">refresh</mat-icon>
+          <p>Chargement des logs...</p>
+        </div>
+      } @else if (logs().length === 0) {
+        <div class="empty-state">
+          <mat-icon>history</mat-icon>
+          <h3>Aucun log trouvé</h3>
+          <p>Modifiez vos critères de recherche</p>
+        </div>
+      } @else {
+        <div class="logs-list">
+          @for (log of logs(); track log.id) {
+            <div class="log-row">
+
+              <div class="log-icon"
+                   [class]="getActionClass(log.action)">
+                <mat-icon>
+                  {{ getActionIcon(log.action) }}
+                </mat-icon>
+              </div>
+
+              <div class="log-content">
+                <div class="log-header">
+                  <span class="log-action"
+                        [class]="getActionClass(log.action)">
+                    {{ log.action }}
+                  </span>
+                  <span class="log-time">
+                    {{ log.createdAt | date:'dd/MM/yyyy HH:mm:ss' }}
+                  </span>
+                </div>
+                <div class="log-details">
+                  @if (log.userEmail) {
+                    <span class="log-user">
+                      <mat-icon>person</mat-icon>
+                      {{ log.userEmail }}
+                    </span>
+                  }
+                  @if (log.userRole) {
+                    <span class="log-role"
+                          [class]="'role-' +
+                            log.userRole.toLowerCase()">
+                      {{ log.userRole }}
+                    </span>
+                  }
+                  @if (log.objetType) {
+                    <span class="log-objet">
+                      <mat-icon>category</mat-icon>
+                      {{ log.objetType }}
+                    </span>
+                  }
+                </div>
+                @if (log.details) {
+                  <p class="log-desc">{{ log.details }}</p>
+                }
+              </div>
+
+            </div>
+          }
+        </div>
+
+        <!-- PAGINATION -->
+        <div class="pagination">
+          <button mat-icon-button
+                  [disabled]="currentPage() === 0"
+                  (click)="pagePrecedente()">
+            <mat-icon>chevron_left</mat-icon>
+          </button>
+          <span>
+            Page {{ currentPage() + 1 }}
+            / {{ totalPages() }}
+          </span>
+          <button mat-icon-button
+                  [disabled]="currentPage() >=
+                    totalPages() - 1"
+                  (click)="pageSuivante()">
+            <mat-icon>chevron_right</mat-icon>
+          </button>
+        </div>
+      }
+    </div>
+
+  </main>
+</div>

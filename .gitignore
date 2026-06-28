@@ -1,0 +1,43 @@
+cd C:\ComptaAssisst
+
+@"
+# Environnement (jamais les vrais secrets)
+.env
+
+# Java / Maven
+target/
+*.class
+*.jar
+!.mvn/wrapper/maven-wrapper.jar
+
+# Node / Angular
+node_modules/
+dist/
+.angular/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# Python
+__pycache__/
+*.pyc
+venv/
+.venv/
+*.egg-info/
+chromadb_data/
+cache/
+
+# Docker / uploads (donnees generees, pas du code)
+uploads-cabinet/
+uploads-chat/
+uploads-facture/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# SQL d'initialisation contenant des hash sensibles (optionnel a garder ou non)
+update_password.sql
+"@ | Set-Content -Path ".gitignore" -Encoding UTF8

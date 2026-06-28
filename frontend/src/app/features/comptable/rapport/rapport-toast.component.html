@@ -1,0 +1,62 @@
+<div style="position: fixed; bottom: 24px; right: 24px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; align-items: flex-end;">
+
+  <div
+    *ngFor="let toast of toastsVisibles; let i = index"
+    style="
+      background: var(--ca-surface, white);
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 14px 16px;
+      width: 320px;
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+      animation: slideIn 0.3s ease;
+    ">
+
+    <div style="
+      width: 36px; height: 36px;
+      border-radius: 8px;
+      background: #eff6ff;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;">
+      <svg width="18" height="18" fill="none" stroke="#3b82f6" stroke-width="1.8" viewBox="0 0 24 24">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+        <polyline points="14,2 14,8 20,8"/>
+        <line x1="16" y1="13" x2="8" y2="13"/>
+        <line x1="16" y1="17" x2="8" y2="17"/>
+      </svg>
+    </div>
+
+    <div style="flex: 1; min-width: 0;">
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 3px;">
+        <span style="font-size: 13px; font-weight: 600; color: #0f172a;">Rapport envoyé</span>
+        <span style="font-size: 11px; color: #94a3b8;">à l'instant</span>
+      </div>
+      <p style="font-size: 12px; color: #64748b; margin: 0; line-height: 1.5;">
+        {{ toast.message }}
+      </p>
+    </div>
+
+    <button
+      (click)="fermer(toast)"
+      style="
+        background: none; border: none;
+        cursor: pointer; color: #94a3b8;
+        padding: 0; line-height: 1;
+        flex-shrink: 0; margin-top: 2px;
+        font-size: 16px;">
+      ✕
+    </button>
+
+  </div>
+
+</div>
+
+<style>
+  @keyframes slideIn {
+    from { transform: translateX(20px); opacity: 0; }
+    to   { transform: translateX(0);    opacity: 1; }
+  }
+</style>

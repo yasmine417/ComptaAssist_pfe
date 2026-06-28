@@ -1,0 +1,406 @@
+version: '3.8'
+
+services:
+
+  # ══════════════════════════════════════════════════
+  # INFRASTRUCTURE
+  # ══════════════════════════════════════════════════
+
+  postgres:
+    image: postgres:15
+    container_name: comptaassist-postgres
+    environment:
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/01-init-db.sql
+
+    ports:
+      - "5432:5432"
+    networks:
+      - comptaassist-net
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  kafka:
+    image: confluentinc/cp-kafka:7.4.0
+    container_name: comptaassist-kafka
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
+    ports:
+      - "9092:9092"
+    networks:
+      - comptaassist-net
+
+  minio:
+    image: minio/minio
+    container_name: comptaassist-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    volumes:
+      - minio_data:/data
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    networks:
+      - comptaassist-net
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:9000/minio/health/live" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  gotenberg:
+    image: gotenberg/gotenberg:8
+    container_name: comptaassist-gotenberg
+    command:
+      - "gotenberg"
+      - "--chromium-disable-routes=false"
+      - "--api-timeout=180s"
+      - "--chromium-start-timeout=60s"
+    ports:
+      - "3002:3000"
+    networks:
+      - comptaassist-net
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+  n8n:
+    image: n8nio/n8n
+    container_name: comptaassist-n8n
+    environment:
+      N8N_HOST: localhost
+      N8N_PORT: 5678
+      N8N_PROTOCOL: http
+      GENERIC_TIMEZONE: Africa/Casablanca
+    volumes:
+      - n8n_data:/home/node/.n8n
+    ports:
+      - "5678:5678"
+    networks:
+      - comptaassist-net
+
+  livekit:
+    image: livekit/livekit-server:latest
+    container_name: comptaassist-livekit
+    command: --dev --bind 0.0.0.0
+    environment:
+      LIVEKIT_KEYS: "devkey: secretsecretsecretsecretsecret32"
+    ports:
+      - "7880:7880"
+      - "7881:7881"
+      - "7882:7882/udp"
+    networks:
+      - comptaassist-net
+
+  # ══════════════════════════════════════════════════
+  # SERVICE DISCOVERY & CONFIG
+  # ══════════════════════════════════════════════════
+
+  eureka-service:
+    build: ./compta/eurika-service
+    container_name: comptaassist-eureka
+    ports:
+      - "8761:8761"
+    networks:
+      - comptaassist-net
+
+  config-service:
+    build: ./compta/config-service
+    container_name: comptaassist-config
+    volumes:
+      - ./config-repo:/config-repo
+    environment:
+      SPRING_PROFILES_ACTIVE: native
+      SPRING_CLOUD_CONFIG_SERVER_NATIVE_SEARCH-LOCATIONS: file:///config-repo
+      EUREKA_CLIENT_SERVICE-URL_DEFAULTZONE: http://eureka-service:8761/eureka/
+    ports:
+      - "8888:8888"
+    healthcheck:
+      test: [ "CMD", "wget", "-qO-", "http://localhost:8888/actuator/health" ]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 60s
+    depends_on:
+      eureka-service:
+        condition: service_started
+    networks:
+      - comptaassist-net
+
+  gateway-service:
+    build: ./compta/gateway-service
+    container_name: comptaassist-gateway
+    environment:
+      EUREKA_CLIENT_SERVICE-URL_DEFAULTZONE: http://eureka-service:8761/eureka/
+      JWT_SECRET: ${JWT_SECRET}
+    ports:
+      - "8080:8080"
+    depends_on:
+      eureka-service:
+        condition: service_started
+    networks:
+      - comptaassist-net
+
+  # ══════════════════════════════════════════════════
+  # PYTHON AI SERVICES
+  # ══════════════════════════════════════════════════
+
+  rag-service:
+    build:
+      context: ./compta_ai
+      dockerfile: Dockerfile.rag
+    container_name: comptaassist-rag
+    environment:
+      GROQ_API_KEY: ${GROQ_API_KEY}
+      HF_TOKEN: ${HF_TOKEN}
+    volumes:
+      - rag_chromadb:/app/chromadb_data
+    ports:
+      - "8001:8001"
+    networks:
+      - comptaassist-net
+
+  ocr-service:
+    build:
+      context: ./compta_ai
+      dockerfile: Dockerfile.ocr
+    container_name: comptaassist-ocr
+    environment:
+      MISTRAL_API_KEY: ${MISTRAL_API_KEY}
+    ports:
+      - "8002:8002"
+    networks:
+      - comptaassist-net
+
+  # ══════════════════════════════════════════════════
+  # SPRING BOOT SERVICES (migrés vers Config Server)
+  # ══════════════════════════════════════════════════
+
+  auth-service:
+    build: ./compta/auth-service
+    container_name: comptaassist-auth
+    environment:
+      SPRING_CONFIG_IMPORT: optional:configserver:http://config-service:8888
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/auth_db
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+      EUREKA_CLIENT_SERVICE-URL_DEFAULTZONE: http://eureka-service:8761/eureka/
+      FISCAL_RAG_URL: http://fiscal-rag-service:8085
+    ports:
+      - "8081:8081"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      config-service:
+        condition: service_healthy
+      eureka-service:
+        condition: service_started
+    networks:
+      - comptaassist-net
+
+  cabinet-service:
+    build: ./compta/cabinet-service
+    container_name: comptaassist-cabinet
+    environment:
+      DOCUMENT_SERVICE_URL: http://document-service:8083
+      SPRING_CONFIG_IMPORT: optional:configserver:http://config-service:8888
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/cabinet_db
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+      EUREKA_CLIENT_SERVICE-URL_DEFAULTZONE: http://eureka-service:8761/eureka/
+      SPRING_KAFKA_BOOTSTRAP-SERVERS: kafka:9092
+      AUTH_SERVICE_URL: http://auth-service:8081
+      GOTENBERG_URL: http://gotenberg:3000
+      LIVEKIT_API-KEY: devkey
+      LIVEKIT_API-SECRET: secretsecretsecretsecretsecret32
+      CHAT_SERVICE_URL: http://chat-service:8088
+      LOCAL_UPLOADS_PATH: /app/uploads
+    volumes:
+      - ./uploads-cabinet:/app/uploads
+    ports:
+      - "8082:8082"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      config-service:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+      livekit:
+        condition: service_started
+    networks:
+      - comptaassist-net
+
+  document-service:
+    build: ./compta/document-service
+    container_name: comptaassist-document
+    environment:
+      SPRING_CONFIG_IMPORT: optional:configserver:http://config-service:8888
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/document_db
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+      MINIO_URL: http://minio:9000
+      SPRING_KAFKA_BOOTSTRAP-SERVERS: kafka:9092
+      EUREKA_CLIENT_SERVICE-URL_DEFAULTZONE: http://eureka-service:8761/eureka/
+    ports:
+      - "8083:8083"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      config-service:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    networks:
+      - comptaassist-net
+
+  fiscal-rag-service:
+    build: ./compta/fiscal-rag-service
+    container_name: comptaassist-fiscal-rag
+    environment:
+      SPRING_CONFIG_IMPORT: optional:configserver:http://config-service:8888
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/fiscal_rag_db
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+      PYTHON_RAG_URL: http://rag-service:8001
+      EUREKA_CLIENT_SERVICE-URL_DEFAULTZONE: http://eureka-service:8761/eureka/
+    ports:
+      - "8085:8085"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      config-service:
+        condition: service_healthy
+      rag-service:
+        condition: service_started
+    networks:
+      - comptaassist-net
+
+  facture-service:
+    build: ./compta/facture-service
+    container_name: comptaassist-facture
+    environment:
+      SPRING_CONFIG_IMPORT: optional:configserver:http://config-service:8888
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/facture_db
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+      CABINET_SERVICE_URL: http://cabinet-service:8082
+      MINIO_URL: http://minio:9000
+      OCR_SERVICE_URL: http://ocr-service:8002
+      DOCUMENT_SERVICE_URL: http://document-service:8083
+      EUREKA_CLIENT_ENABLED: "true"
+      EUREKA_CLIENT_SERVICE-URL_DEFAULTZONE: http://eureka-service:8761/eureka/
+      EUREKA_INSTANCE_PREFER-IP-ADDRESS: "true"
+      LOCAL_UPLOADS_PATH: /app/uploads
+    volumes:
+      - ./uploads-facture:/app/uploads
+    ports:
+      - "8086:8086"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      config-service:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      ocr-service:
+        condition: service_started
+      eureka-service:
+        condition: service_started
+    networks:
+      - comptaassist-net
+
+  tva-service:
+    build: ./compta/tva-service
+    container_name: comptaassist-tva
+    environment:
+      SPRING_CONFIG_IMPORT: optional:configserver:http://config-service:8888
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/tva_db
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+      FACTURE_SERVICE_URL: http://facture-service:8086
+      CABINET_SERVICE_URL: http://cabinet-service:8082
+      SPRING_KAFKA_BOOTSTRAP-SERVERS: kafka:9092
+      EUREKA_CLIENT_SERVICE-URL_DEFAULTZONE: http://eureka-service:8761/eureka/
+      EUREKA_INSTANCE_PREFER-IP-ADDRESS: "true"
+    ports:
+      - "8087:8087"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      config-service:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+      facture-service:
+        condition: service_started
+      eureka-service:
+        condition: service_started
+    networks:
+      - comptaassist-net
+
+  chat-service:
+    build: ./compta/chat-service
+    container_name: comptaassist-chat
+    environment:
+      SPRING_CONFIG_IMPORT: optional:configserver:http://config-service:8888
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/chat_db
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+      CABINET_SERVICE_URL: http://cabinet-service:8082
+      SPRING_KAFKA_BOOTSTRAP-SERVERS: kafka:9092
+      MINIO_URL: http://minio:9000
+      CORS_ALLOWED-ORIGINS: http://localhost:4200
+      EUREKA_CLIENT_SERVICE-URL_DEFAULTZONE: http://eureka-service:8761/eureka/
+      EUREKA_INSTANCE_PREFER-IP-ADDRESS: "true"
+      LOCAL_UPLOADS_PATH: /app/uploads
+    volumes:
+      - ./uploads-chat:/app/uploads
+    ports:
+      - "8088:8088"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      config-service:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+      eureka-service:
+        condition: service_started
+    networks:
+      - comptaassist-net
+
+  # ══════════════════════════════════════════════════
+  # FRONTEND
+  # ══════════════════════════════════════════════════
+
+  frontend:
+    build: ./frontend
+    container_name: comptaassist-frontend
+    ports:
+      - "4200:80"
+    depends_on:
+      - auth-service
+      - cabinet-service
+      - facture-service
+    networks:
+      - comptaassist-net
+
+networks:
+  comptaassist-net:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  minio_data:
+  rag_chromadb:
+  n8n_data:

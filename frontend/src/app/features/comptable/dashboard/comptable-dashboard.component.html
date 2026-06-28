@@ -1,0 +1,254 @@
+<div class="dash-layout">
+  <app-comptable-sidebar></app-comptable-sidebar>
+
+  <main class="main-content">
+
+    <!-- HERO -->
+    <div class="hero-bar">
+      <div>
+        <p class="hero-date">{{ dateAujourdhui }}</p>
+        <h1 class="hero-title">
+          {{ heure }},
+          <span class="hero-name">
+            {{ currentUser()?.prenom || 'Comptable' }}
+          </span>
+        </h1>
+      </div>
+      <a routerLink="/comptable/chat" class="btn-ia">
+        <mat-icon>auto_awesome</mat-icon> Assistant IA
+      </a>
+    </div>
+
+    @if (erreur()) {
+      <div class="erreur-bar">
+        <mat-icon>warning</mat-icon> {{ erreur() }}
+      </div>
+    }
+
+    @if (statsLoading()) {
+      <div class="charts-loading">
+        <mat-icon>bar_chart</mat-icon>
+        <span>Chargement des données...</span>
+      </div>
+    }
+
+    <!-- ══ LIGNE 1 : CA + Charges + Clients ═══════ -->
+    <div class="row1">
+
+      <!-- CA Mensuel -->
+      <div class="solde-card">
+        <p class="card-label">CA MENSUEL</p>
+        <h2 class="card-value blue">
+          @if (stats()) {
+            {{ formatMontant(stats().totalProduits) }}
+          } @else { — }
+        </h2>
+        <div class="solde-chart-body"
+             [style.visibility]="stats() ? 'visible' : 'hidden'">
+          <canvas id="chartCA"></canvas>
+        </div>
+      </div>
+
+      <!-- Total Charges -->
+      <div class="solde-card">
+        <p class="card-label">TOTAL CHARGES</p>
+        <h2 class="card-value red">
+          @if (stats()) {
+            {{ formatMontant(stats().totalCharges) }}
+          } @else { — }
+        </h2>
+        <div class="solde-chart-body"
+             [style.visibility]="stats() ? 'visible' : 'hidden'">
+          <canvas id="chartCharges"></canvas>
+        </div>
+      </div>
+
+      <!-- Clients -->
+      <div class="clients-card">
+        <p class="card-label">ENCAISSEMENT CLIENT TTC</p>
+        @if (stats()) {
+          <p class="clients-total">
+            {{ formatMontant(stats().totalTtcProduits) }}
+            <span>en attente d'encaissement</span>
+          </p>
+        }
+        <div class="clients-list">
+          @for (c of clients(); track c.id) {
+            <div class="client-row"
+                 [class.active]="clientCtx.clientActif()?.id === c.id"
+                 (click)="selectClient(c)">
+              <div class="client-av">
+                {{ c.nomEntreprise.charAt(0).toUpperCase() }}
+              </div>
+              <div class="client-meta">
+                <strong>{{ c.nomEntreprise }}</strong>
+                <span class="client-sub">
+                  {{ c.actif ? 'Actif' : 'Inactif' }}
+                </span>
+              </div>
+              <span class="badge-actif" [class.inactif]="!c.actif">
+                {{ c.actif ? 'Actif' : 'Inactif' }}
+              </span>
+            </div>
+          }
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ══ LIGNE 2 : KPIs ════════════════════════ -->
+    <div class="row2">
+
+      <div class="kpi-card kpi-amber">
+        <div class="kpi-icon">
+          <mat-icon>receipt</mat-icon>
+        </div>
+        <div class="kpi-body">
+          <span class="kpi-num">TVA</span>
+          <span class="kpi-lbl">Déclaration fiscale</span>
+          <a routerLink="/comptable/tva" class="kpi-cta">
+            Déclarer <mat-icon>east</mat-icon>
+          </a>
+        </div>
+      </div>
+
+      <div class="kpi-card kpi-blue">
+        <div class="kpi-icon">
+          <mat-icon>folder_shared</mat-icon>
+        </div>
+        <div class="kpi-body">
+          <span class="kpi-num">{{ clients().length }}</span>
+          <span class="kpi-lbl">Clients assignés</span>
+          <a routerLink="/comptable/factures-cpc" class="kpi-cta">
+            Gérer <mat-icon>east</mat-icon>
+          </a>
+        </div>
+      </div>
+
+      <div class="kpi-card kpi-purple">
+        <div class="kpi-icon">
+          <mat-icon>smart_toy</mat-icon>
+        </div>
+        <div class="kpi-body">
+          <span class="kpi-num">IA</span>
+          <span class="kpi-lbl">Assistant fiscal</span>
+          <a routerLink="/comptable/chat" class="kpi-cta">
+            Ouvrir <mat-icon>east</mat-icon>
+          </a>
+        </div>
+      </div>
+
+      <div class="kpi-card kpi-green">
+        <div class="kpi-icon">
+          <mat-icon>analytics</mat-icon>
+        </div>
+        <div class="kpi-body">
+          <span class="kpi-num">Bilan</span>
+          <span class="kpi-lbl">Analyse comptable</span>
+          <a routerLink="/comptable/bilan-comptable" class="kpi-cta">
+            Analyser <mat-icon>east</mat-icon>
+          </a>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ══ LIGNE 3 : Graphes détaillés ══════════ -->
+    <div class="row3"
+         [style.visibility]="stats() ? 'visible' : 'hidden'"
+         [style.height]="stats() ? 'auto' : '0'">
+
+      <!-- Chiffre d'affaires -->
+      <div class="chart-card">
+        <div class="chart-card-head">
+          <div>
+            <h3>Chiffre d'affaires HT</h3>
+            @if (stats()) {
+              <span class="chart-sub">
+                {{ formatMontant(stats().totalProduits) }}
+              </span>
+            }
+          </div>
+        </div>
+        <div class="chart-body-bot">
+          <canvas id="chartCADetail"></canvas>
+        </div>
+      </div>
+
+      <!-- Résultat -->
+      <div class="chart-card">
+        <div class="chart-card-head">
+          <div>
+            <h3>Résultat</h3>
+            @if (stats()) {
+              <span class="chart-sub"
+                    [style.color]="stats().totalProduits >= stats().totalCharges
+                      ? '#059669' : '#dc2626'">
+                {{ formatMontant(
+                stats().totalProduits - stats().totalCharges) }}
+              </span>
+            }
+          </div>
+        </div>
+        <div class="chart-body-bot">
+          <canvas id="chartDoughnut"></canvas>
+        </div>
+      </div>
+
+      <!-- Charges / Statuts -->
+      <div class="chart-card">
+        <div class="chart-card-head">
+          <div>
+            <h3>Charges</h3>
+            @if (stats()) {
+              <span class="chart-sub">
+                {{ stats().nbFactures }} facture(s)
+              </span>
+            }
+          </div>
+        </div>
+        <div class="chart-body-bot">
+          <canvas id="chartStatuts"></canvas>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ══ CLIENT FOCUS ══════════════════════════ -->
+    @if (clientCtx.clientActif()) {
+      <div class="client-focus">
+        <div class="focus-head">
+          <div class="focus-av">
+            {{ clientCtx.clientActif()!.nomEntreprise
+            .charAt(0).toUpperCase() }}
+          </div>
+          <div>
+            <h3>{{ clientCtx.clientActif()!.nomEntreprise }}</h3>
+            <span>
+              N° fiscal : {{ clientCtx.clientActif()!.numeroFiscal }}
+            </span>
+          </div>
+        </div>
+        <div class="focus-links">
+          <a [routerLink]="['/comptable/factures-cpc']"
+             class="focus-btn blue">
+            <mat-icon>receipt_long</mat-icon> Factures
+          </a>
+          <a [routerLink]="['/comptable/bilan-comptable']"
+             class="focus-btn green">
+            <mat-icon>analytics</mat-icon> Bilan
+          </a>
+          <a [routerLink]="['/comptable/chat']"
+             class="focus-btn purple">
+            <mat-icon>smart_toy</mat-icon> IA
+          </a>
+          <a [routerLink]="['/comptable/tva']"
+             class="focus-btn amber">
+            <mat-icon>receipt</mat-icon> TVA
+          </a>
+        </div>
+      </div>
+    }
+
+  </main>
+</div>

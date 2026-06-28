@@ -1,0 +1,581 @@
+// ── Tokens ────────────────────────────────────────────
+$lavender: #eef0fb;
+$surface:  #ffffff;
+$border:   #e8ebf6;
+$text:     #1a1d2e;
+$muted:    #9499b0;
+$purple:   #6c63ff;
+$purple-l: #f0efff;
+
+// ── Layout ────────────────────────────────────────────
+.client-shell {
+  display:        flex;
+  flex-direction: column;
+  height:         100%;
+  min-height:     0;
+  background:     $lavender;
+  font-family:    'Inter', system-ui, sans-serif;
+  overflow:       hidden;
+}
+
+// ── Top bar ───────────────────────────────────────────
+.top-bar {
+  display:         flex;
+  align-items:     center;
+  justify-content: space-between;
+  padding:         10px 14px;
+  background:      $surface;
+  border-bottom:   1px solid $border;
+  flex-shrink:     0;
+  box-shadow:      0 2px 8px rgba(108,99,255,0.06);
+  min-height:      48px;
+}
+
+.top-brand {
+  font-size:   13px;
+  font-weight: 600;
+  color:       $text;
+  display:     flex;
+  align-items: center;
+  gap:         6px;
+  white-space: nowrap;
+
+  .brand-dot {
+    width:         7px;
+    height:        7px;
+    border-radius: 50%;
+    background:    $purple;
+    box-shadow:    0 0 0 2px rgba(108,99,255,0.2);
+    flex-shrink:   0;
+  }
+
+  strong { font-weight: 900; color: $purple; }
+}
+
+.top-center {
+  display:     flex;
+  align-items: center;
+  gap:         5px;
+  font-size:   12px;
+  font-weight: 600;
+  color:       $text;
+
+  mat-icon {
+    color:     $purple;
+    font-size: 16px;
+    width:     16px;
+    height:    16px;
+  }
+}
+
+.top-status {
+  display:     flex;
+  align-items: center;
+  gap:         5px;
+  font-size:   11px;
+  color:       $muted;
+  white-space: nowrap;
+
+  .conn-dot {
+    width:         7px;
+    height:        7px;
+    border-radius: 50%;
+    background:    #d1d5db;
+    transition:    background 0.3s;
+    flex-shrink:   0;
+  }
+
+  &.status-on {
+    color: #16a34a;
+    .conn-dot { background: #22c55e; }
+  }
+}
+
+// ── Body ──────────────────────────────────────────────
+.client-body {
+  flex:     1;
+  display:  flex;
+  overflow: hidden;
+  padding:  8px;
+  gap:      8px;
+  min-height: 0;
+}
+
+// ── Sidebar conversations ─────────────────────────────
+.conv-sidebar {
+  width:         220px;
+  flex-shrink:   0;
+  background:    $surface;
+  border-radius: 14px;
+  overflow-y:    auto;
+  box-shadow:    0 4px 16px rgba(108,99,255,0.08);
+  padding:       10px 8px;
+}
+
+.conv-sidebar-title {
+  padding:        4px 8px 10px;
+  font-size:      10px;
+  font-weight:    800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color:          $muted;
+}
+
+.conv-card {
+  display:       flex;
+  align-items:   center;
+  gap:           10px;
+  padding:       10px 8px;
+  border-radius: 12px;
+  cursor:        pointer;
+  transition:    background 0.12s;
+  margin-bottom: 2px;
+
+  &:hover { background: $lavender; }
+
+  &.conv-active {
+    background: $purple-l;
+    .conv-name { color: $purple; font-weight: 700; }
+  }
+}
+
+// ── Avatars ───────────────────────────────────────────
+.avatar {
+  position:      relative;
+  border-radius: 50%;
+  font-weight:   800;
+  display:       flex;
+  align-items:   center;
+  justify-content: center;
+  flex-shrink:   0;
+  color:         white;
+
+  &.avatar-purple {
+    width: 36px; height: 36px; font-size: 12px;
+    background: linear-gradient(135deg, #a78bfa, #6c63ff);
+  }
+  &.avatar-blue {
+    width: 36px; height: 36px; font-size: 12px;
+    background: linear-gradient(135deg, #4facfe, #00f2fe);
+  }
+  &.avatar-green {
+    width: 28px; height: 28px; font-size: 10px;
+    background: linear-gradient(135deg, #43e97b, #38f9d7);
+  }
+  &.avatar-sm {
+    width: 28px; height: 28px; font-size: 10px;
+  }
+}
+
+.conv-text { flex: 1; min-width: 0; }
+
+.conv-line1 {
+  display:         flex;
+  justify-content: space-between;
+  align-items:     center;
+  margin-bottom:   2px;
+}
+
+.conv-name {
+  font-size:     13px;
+  font-weight:   600;
+  color:         $text;
+  white-space:   nowrap;
+  overflow:      hidden;
+  text-overflow: ellipsis;
+  max-width:     110px;
+}
+
+.conv-ts { font-size: 10px; color: $muted; flex-shrink: 0; }
+
+.conv-line2 {
+  display:         flex;
+  justify-content: space-between;
+  align-items:     center;
+}
+
+.conv-preview {
+  font-size:     11px;
+  color:         $muted;
+  white-space:   nowrap;
+  overflow:      hidden;
+  text-overflow: ellipsis;
+  max-width:     120px;
+}
+
+.pill-badge {
+  background:    $purple;
+  color:         white;
+  font-size:     10px;
+  font-weight:   800;
+  min-width:     16px;
+  height:        16px;
+  border-radius: 8px;
+  display:       flex;
+  align-items:   center;
+  justify-content: center;
+  padding:       0 4px;
+}
+
+// ── Zone principale ───────────────────────────────────
+.chat-area {
+  flex:           1;
+  background:     $surface;
+  border-radius:  14px;
+  display:        flex;
+  flex-direction: column;
+  overflow:       hidden;
+  box-shadow:     0 4px 16px rgba(108,99,255,0.08);
+  min-height:     0;
+}
+
+.no-conv-state {
+  flex:            1;
+  display:         flex;
+  flex-direction:  column;
+  align-items:     center;
+  justify-content: center;
+  gap:             10px;
+  color:           $muted;
+  text-align:      center;
+  padding:         20px;
+
+  .no-conv-icon {
+    width:           56px;
+    height:          56px;
+    border-radius:   16px;
+    background:      $purple-l;
+    display:         flex;
+    align-items:     center;
+    justify-content: center;
+    margin-bottom:   6px;
+
+    mat-icon {
+      font-size: 28px;
+      width:     28px;
+      height:    28px;
+      color:     $purple;
+    }
+  }
+
+  h3 { font-size: 15px; font-weight: 700; color: $text; margin: 0; }
+  p  { font-size: 12px; margin: 0; }
+}
+
+// ── Header conversation ───────────────────────────────
+.chat-top {
+  display:     flex;
+  align-items: center;
+  gap:         10px;
+  padding:     10px 14px;
+  border-bottom: 1px solid $border;
+  flex-shrink: 0;
+  background:  $surface;
+}
+
+.chat-top-info {
+  flex: 1;
+  min-width: 0;
+
+  .chat-top-name {
+    display:       block;
+    font-size:     13px;
+    font-weight:   700;
+    color:         $text;
+    white-space:   nowrap;
+    overflow:      hidden;
+    text-overflow: ellipsis;
+  }
+
+  .chat-top-sub {
+    font-size: 11px;
+    color:     $muted;
+  }
+}
+
+.chat-top-right { flex-shrink: 0; }
+
+.conn-pill {
+  display:       flex;
+  align-items:   center;
+  gap:           4px;
+  font-size:     10px;
+  font-weight:   600;
+  color:         $muted;
+  padding:       3px 8px;
+  border-radius: 20px;
+  background:    $lavender;
+
+  .conn-dot {
+    width:         5px;
+    height:        5px;
+    border-radius: 50%;
+    background:    #d1d5db;
+    transition:    background 0.3s;
+  }
+
+  &.pill-on {
+    color:      #16a34a;
+    background: #dcfce7;
+    .conn-dot { background: #22c55e; }
+  }
+}
+
+// ── Messages ──────────────────────────────────────────
+.msgs-scroll {
+  flex:           1;
+  overflow-y:     auto;
+  padding:        14px;
+  display:        flex;
+  flex-direction: column;
+  gap:            10px;
+  background:     $lavender;
+  min-height:     0;
+
+  &::-webkit-scrollbar { width: 3px; }
+  &::-webkit-scrollbar-thumb {
+    background:    $border;
+    border-radius: 3px;
+  }
+}
+
+.state-center {
+  flex:            1;
+  display:         flex;
+  flex-direction:  column;
+  align-items:     center;
+  justify-content: center;
+  color:           $muted;
+  gap:             8px;
+
+  mat-icon {
+    font-size: 30px;
+    width:     30px;
+    height:    30px;
+    opacity:   0.3;
+  }
+
+  p { font-size: 12px; margin: 0; }
+}
+
+.msg-wrap {
+  display:     flex;
+  align-items: flex-end;
+  gap:         8px;
+
+  &.wrap-me {
+    flex-direction: row-reverse;
+
+    .bubble {
+      background:              $purple;
+      color:                   white;
+      border-bottom-right-radius: 4px;
+      box-shadow:              0 3px 10px rgba(108,99,255,0.25);
+    }
+
+    .msg-ts { justify-content: flex-end; }
+  }
+
+  &.wrap-them {
+    flex-direction: row;
+
+    .bubble {
+      background:             $surface;
+      color:                  $text;
+      border-bottom-left-radius: 4px;
+      box-shadow:             0 2px 6px rgba(0,0,0,0.06);
+    }
+  }
+}
+
+.msg-col {
+  display:        flex;
+  flex-direction: column;
+  gap:            3px;
+  max-width:      65%;
+}
+
+.msg-from {
+  font-size:   10px;
+  font-weight: 600;
+  color:       $muted;
+  padding-left: 4px;
+}
+
+.bubble {
+  padding:       10px 13px;
+  border-radius: 16px;
+  font-size:     13px;
+  line-height:   1.5;
+  word-break:    break-word;
+  white-space:   pre-wrap;
+}
+
+.msg-ts {
+  display:     flex;
+  align-items: center;
+  gap:         3px;
+  font-size:   10px;
+  color:       $muted;
+  padding:     0 4px;
+
+  &.ts-me { justify-content: flex-end; }
+}
+
+.tick {
+  font-size: 11px;
+  width:     11px;
+  height:    11px;
+  color:     $muted;
+  &.tick-read { color: $purple; }
+}
+
+// ── Zone saisie ───────────────────────────────────────
+.input-row {
+  display:     flex;
+  align-items: flex-end;
+  gap:         8px;
+  padding:     10px 12px;
+  background:  $surface;
+  border-top:  1px solid $border;
+  flex-shrink: 0;
+}
+
+.input-box {
+  flex:          1;
+  display:       flex;
+  align-items:   flex-end;
+  background:    $lavender;
+  border-radius: 14px;
+  padding:       6px 8px 6px 12px;
+  gap:           4px;
+}
+
+.msg-ta {
+  flex:        1;
+  border:      none;
+  background:  transparent;
+  outline:     none;
+  resize:      none;
+  font-size:   13px;
+  color:       $text;
+  font-family: inherit;
+  line-height: 1.5;
+  max-height:  80px;
+  padding:     3px 0;
+  &::placeholder { color: $muted; }
+}
+
+.icon-action {
+  width:         30px;
+  height:        30px;
+  border-radius: 8px;
+  border:        none;
+  background:    transparent;
+  color:         $muted;
+  display:       flex;
+  align-items:   center;
+  justify-content: center;
+  cursor:        pointer;
+  transition:    all 0.15s;
+  flex-shrink:   0;
+
+  mat-icon { font-size: 16px; width: 16px; height: 16px; }
+  &:hover { color: $purple; }
+  &.sm { width: 24px; height: 24px; border-radius: 6px; }
+}
+
+.send-fab {
+  width:         40px;
+  height:        40px;
+  border-radius: 50%;
+  background:    $purple;
+  border:        none;
+  cursor:        pointer;
+  display:       flex;
+  align-items:   center;
+  justify-content: center;
+  color:         white;
+  flex-shrink:   0;
+  box-shadow:    0 3px 10px rgba(108,99,255,0.35);
+  transition:    transform 0.15s, box-shadow 0.15s;
+
+  mat-icon { font-size: 18px; }
+
+  &:hover:not(:disabled) {
+    transform:  scale(1.08);
+    box-shadow: 0 5px 16px rgba(108,99,255,0.45);
+  }
+
+  &:disabled { opacity: 0.4; cursor: not-allowed; }
+}
+
+// ── Fichiers ──────────────────────────────────────────
+.msg-image {
+  max-width:   200px;
+  max-height:  140px;
+  border-radius: 10px;
+  cursor:      pointer;
+  display:     block;
+  object-fit:  cover;
+  &:hover { opacity: 0.9; }
+}
+
+.msg-fichier {
+  display:     flex;
+  align-items: center;
+  gap:         7px;
+  cursor:      pointer;
+  padding:     3px 2px;
+  &:hover { opacity: 0.8; }
+
+  mat-icon { font-size: 18px; width: 18px; height: 18px; }
+  span { font-size: 12px; font-weight: 500; flex: 1; }
+  .dl-icon { font-size: 14px; width: 14px; height: 14px; opacity: 0.7; }
+}
+
+// ── Spinner ───────────────────────────────────────────
+.spinner {
+  width:         24px;
+  height:        24px;
+  border:        3px solid $border;
+  border-top-color: $purple;
+  border-radius: 50%;
+  animation:     spin 0.8s linear infinite;
+}
+.visio-invite {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  mat-icon {
+    color: #6c63ff;
+  }
+}
+
+.btn-rejoindre-visio {
+  display: inline-block;
+  padding: 8px 16px;
+  background: #6c63ff;
+  color: white;
+  border-radius: 8px;
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+
+  &:hover {
+    background: #5a52e0;
+  }
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+// ── Responsive ────────────────────────────────────────
+@media (max-width: 768px) {
+  .client-body   { padding: 6px; }
+  .conv-sidebar  { display: none; }
+  .top-center    { display: none; }
+  .chat-area     { border-radius: 10px; }
+  .msgs-scroll   { padding: 10px; }
+  .msg-col       { max-width: 80%; }
+}

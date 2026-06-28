@@ -1,0 +1,125 @@
+<div class="dash-layout">
+  <app-comptable-sidebar></app-comptable-sidebar>
+
+  <main class="main-content">
+    <div class="top-bar">
+      <div>
+        <h1 class="page-title">Détection d'Anomalies Factures</h1>
+        <p class="page-sub">Uploadez les factures fournisseurs — doublons et erreurs TVA détectés automatiquement</p>
+      </div>
+    </div>
+
+    <div class="factures-layout">
+      <!-- Gauche -->
+      <div class="left-panel">
+        <div class="panel-card">
+          <h3><mat-icon>folder_shared</mat-icon> Sélectionner un client</h3>
+          <div class="clients-list">
+            @for (c of clients(); track c.id) {
+              <div class="client-item" [class.selected]="selectedClient()?.id === c.id" (click)="selectClient(c)">
+                <div class="c-avatar">{{ c.nomEntreprise.charAt(0) }}</div>
+                <div class="c-info">
+                  <strong>{{ c.nomEntreprise }}</strong>
+                  <span>{{ c.numeroFiscal }}</span>
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+
+        @if (selectedClient()) {
+          <div class="panel-card upload-card">
+            <h3><mat-icon>upload_file</mat-icon> Uploader les factures</h3>
+            <label class="upload-zone" [class.loading]="uploading()">
+              <input type="file" accept=".pdf" multiple (change)="onFilesUpload($event)" hidden [disabled]="uploading()" />
+              <mat-icon>cloud_upload</mat-icon>
+              @if (uploading()) {
+                <span>Upload en cours...</span>
+                <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+              } @else {
+                <span>Sélectionner plusieurs PDFs</span>
+                <small>Upload multiple autorisé</small>
+              }
+            </label>
+          </div>
+        }
+
+        @if (factures().length > 0) {
+          <div class="panel-card">
+            <div class="panel-header">
+              <h3><mat-icon>receipt</mat-icon> {{ factures().length }} facture(s)</h3>
+              <button mat-flat-button class="btn-scan" (click)="detecterAnomalies()" [disabled]="scanning()">
+                @if (scanning()) { <mat-progress-bar mode="indeterminate" style="width:60px"></mat-progress-bar> }
+                @else { <mat-icon>find_in_page</mat-icon> }
+                Scanner
+              </button>
+            </div>
+            @for (f of factures(); track f.id) {
+              <div class="facture-row">
+                <mat-icon class="pdf">picture_as_pdf</mat-icon>
+                <div class="f-info">
+                  <span>{{ f.nomFichier }}</span>
+                  <small>{{ f.dateUpload | date:'dd/MM/yyyy' }}</small>
+                </div>
+                @if (f.analyse) { <span class="badge-success">Analysé</span> }
+              </div>
+            }
+          </div>
+        }
+      </div>
+
+      <!-- Droite : résultats anomalies -->
+      <div class="right-panel">
+        @if (scanning()) {
+          <div class="scan-loading">
+            <mat-icon class="spin-icon">find_in_page</mat-icon>
+            <h3>Scan IA en cours...</h3>
+            <p>Détection des doublons et erreurs TVA</p>
+            <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+          </div>
+        } @else if (anomalies().length > 0) {
+          <div class="anomalies-header danger">
+            <mat-icon>warning</mat-icon>
+            <div>
+              <h2>{{ anomalies().length }} anomalie(s) détectée(s)</h2>
+              <p>Vérifiez les éléments surlignés ci-dessous</p>
+            </div>
+          </div>
+          @for (a of anomalies(); track a.message) {
+            <div class="anomalie-card" [class]="'anomalie-' + a.type.toLowerCase()">
+              <div class="anomalie-header">
+                <mat-icon>{{ a.type === 'DOUBLON' ? 'content_copy' : a.type === 'ERREUR_TVA' ? 'calculate' : 'attach_money' }}</mat-icon>
+                <div>
+                  <strong>{{ a.type === 'DOUBLON' ? 'Doublon détecté' : a.type === 'ERREUR_TVA' ? 'Erreur de TVA' : 'Montant suspect' }}</strong>
+                  <p>{{ a.message }}</p>
+                </div>
+              </div>
+              <div class="factures-impliquees">
+                <small>Factures concernées :</small>
+                @for (f of a.factures; track f) {
+                  <span class="facture-tag">{{ f }}</span>
+                }
+              </div>
+            </div>
+          }
+        } @else if (factures().length > 0) {
+          <div class="empty-result">
+            <mat-icon>find_in_page</mat-icon>
+            <h3>Prêt à scanner</h3>
+            <p>{{ factures().length }} facture(s) chargée(s). Cliquez sur "Scanner" pour détecter les anomalies.</p>
+            <button mat-flat-button class="btn-scan-big" (click)="detecterAnomalies()">
+              <mat-icon>find_in_page</mat-icon>
+              Détecter les anomalies
+            </button>
+          </div>
+        } @else {
+          <div class="empty-result">
+            <mat-icon>receipt_long</mat-icon>
+            <h3>Aucune facture chargée</h3>
+            <p>Sélectionnez un client et uploadez ses factures fournisseurs pour détecter les doublons et erreurs de TVA.</p>
+          </div>
+        }
+      </div>
+    </div>
+  </main>
+</div>

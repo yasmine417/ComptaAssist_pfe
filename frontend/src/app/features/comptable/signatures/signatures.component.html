@@ -1,0 +1,559 @@
+<div class="signature-layout">
+  <app-comptable-sidebar></app-comptable-sidebar>
+
+  <div class="signatures-page">
+
+    <div class="page-header">
+      <div class="header-text">
+        <span class="header-eyebrow">Espace conformité</span>
+        <h1><mat-icon>draw</mat-icon> Signatures électroniques</h1>
+      </div>
+      @if (clientActif) {
+        <div class="client-info">
+          <mat-icon>business</mat-icon>{{ clientActif.nomEntreprise }}
+        </div>
+      }
+    </div>
+
+    @if (!clientActif) {
+      <div class="no-client-warning">
+        <mat-icon>warning</mat-icon>
+        <span>Sélectionnez un client dans la barre latérale</span>
+      </div>
+    }
+
+    <!-- Cartes d'action -->
+    <div class="docs-grid">
+      @for (doc of typesDocs; track doc.key) {
+        <div class="doc-card" [style.border-color]="doc.color">
+          <div class="doc-icon" [style.color]="doc.color" [style.background]="doc.color + '14'">
+            <mat-icon>{{ doc.icon }}</mat-icon>
+          </div>
+          <div class="doc-info">
+            <h3>{{ doc.label }}</h3>
+            <p>{{ doc.desc }}</p>
+          </div>
+          <button mat-flat-button [style.background]="doc.color"
+                  style="color:white;margin-top:12px;width:100%"
+                  [disabled]="!clientActif || !clientActif.email"
+                  (click)="ouvrirModal(doc.key)">
+            <mat-icon>send</mat-icon> Créer et signer
+          </button>
+        </div>
+      }
+    </div>
+
+    <!-- Historique -->
+    <div class="historique-section">
+      <div class="historique-header">
+        <h2><mat-icon>history</mat-icon> Historique</h2>
+        @if (signatures().length > 0) {
+          <span class="historique-count">
+          {{ signatures().length }} document{{ signatures().length > 1 ? 's' : '' }}
+        </span>
+        }
+      </div>
+      @if (loading()) {
+        <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+      }
+      @if (signatures().length === 0 && !loading()) {
+        <div class="empty-state">
+          <mat-icon>draw</mat-icon>
+          <p>Aucun document pour ce client</p>
+        </div>
+      }
+      @for (sig of signaturesPage(); track sig.id) {
+        <div class="sig-card" [style.border-left-color]="getTypeColor(sig.typeDocument)">
+          <mat-icon [style.color]="getTypeColor(sig.typeDocument)"
+                    style="font-size:26px;width:26px;height:26px">
+            {{ getTypeIcon(sig.typeDocument) }}
+          </mat-icon>
+          <div class="sig-info">
+            <div class="sig-type">{{ getTypeLabel(sig.typeDocument) }}</div>
+            <div class="sig-client">
+              {{ sig.clientNom }} — {{ sig.clientEmail }}
+            </div>
+            <div class="sig-dates">
+              Créé {{ sig.createdAt | date:'dd/MM/yyyy HH:mm' }}
+              @if (sig.signedAtClient) {
+                · Signé par client
+                {{ sig.signedAtClient | date:'dd/MM/yyyy' }}
+              }
+            </div>
+          </div>
+          <span class="statut-badge" [class]="getStatutClass(sig)">
+          {{ getStatutLabel(sig) }}
+        </span>
+          <div class="sig-actions">
+            @if (sig.lienStatut === 'EN_ATTENTE_COMPTABLE'
+            || sig.statut === 'ENVOYE') {
+              <button mat-flat-button
+                      style="background:#4338ca;color:white;font-size:12px"
+                      matTooltip="Signer ce document"
+                      (click)="ouvrirSignerModal(sig)">
+                <mat-icon>draw</mat-icon> Signer
+              </button>
+            }
+            @if (sig.lienStatut === 'SIGNE' && sig.urlPdfSigne) {
+              <button mat-flat-button
+                      style="background:#1f6a4c;color:white;font-size:12px"
+                      matTooltip="Télécharger le PDF signé"
+                      (click)="voirPdfSigne(sig)">
+                <mat-icon>download</mat-icon> PDF signé
+              </button>
+            }
+            <button mat-icon-button matTooltip="Actualiser"
+                    (click)="synchroniser(sig)">
+              <mat-icon>refresh</mat-icon>
+            </button>
+            @if (sig.lienStatut !== 'SIGNE') {
+              <button mat-icon-button matTooltip="Révoquer"
+                      color="warn" (click)="revoquer(sig)">
+                <mat-icon>cancel</mat-icon>
+              </button>
+            }
+          </div>
+        </div>
+      }
+
+      @if (totalPages() > 1) {
+        <div class="pagination">
+          <button class="page-btn" type="button"
+                  [disabled]="currentPage() === 1"
+                  (click)="pagePrecedente()">
+            <mat-icon>chevron_left</mat-icon>
+          </button>
+          <span class="page-info">Page {{ currentPage() }} / {{ totalPages() }}</span>
+          <button class="page-btn" type="button"
+                  [disabled]="currentPage() === totalPages()"
+                  (click)="pageSuivante()">
+            <mat-icon>chevron_right</mat-icon>
+          </button>
+        </div>
+      }
+    </div>
+
+    <!-- ══════════════════════════════════════════════
+         MODAL LETTRE DE MISSION
+    ══════════════════════════════════════════════ -->
+    @if (showModal() && typeChoisi() === 'LETTRE_MISSION') {
+      <div class="modal-overlay" (click)="showModal.set(false)">
+        <div class="modal-box modal-large"
+             (click)="$event.stopPropagation()">
+
+          <button mat-icon-button class="modal-close"
+                  (click)="showModal.set(false)">
+            <mat-icon>close</mat-icon>
+          </button>
+
+          <h3>
+            <mat-icon style="color:#4338ca">description</mat-icon>
+            Lettre de mission
+          </h3>
+          <p class="modal-desc">
+            Après création, vous signerez en premier, puis le document
+            sera envoyé au client.
+          </p>
+
+          <div class="client-recap">
+            <mat-icon>business</mat-icon>
+            <div>
+              <strong>{{ clientActif?.nomEntreprise }}</strong>
+              <span>{{ clientActif?.email }}</span>
+            </div>
+          </div>
+
+          <!-- Honoraires -->
+          <div class="form-section">
+            <h4>Honoraires mensuels (HT)</h4>
+            <div class="form-row">
+              <div class="form-field">
+                <label>Montant HT (MAD) *</label>
+                <input type="number" min="0" step="100"
+                       [(ngModel)]="formLettre.honoraires"
+                       placeholder="Ex: 2500" />
+              </div>
+              <div class="form-field">
+                <label>Jour de paiement</label>
+                <input type="number" min="1" max="28"
+                       [(ngModel)]="formLettre.jourPaiement" />
+              </div>
+              <div class="form-field">
+                <label>Date de début</label>
+                <input type="date" [(ngModel)]="formLettre.dateDebut" />
+              </div>
+            </div>
+            @if (formLettre.honoraires) {
+              <div class="ttc-preview">
+                TTC (TVA 20%) :
+                <strong>
+                  {{ +formLettre.honoraires * 1.2 | number:'1.2-2' }} MAD
+                </strong>
+              </div>
+            }
+          </div>
+
+          <!-- Services inclus -->
+          <div class="form-section">
+            <h4>Services inclus</h4>
+            <div class="services-grid">
+              <label class="service-check">
+                <input type="checkbox"
+                       [(ngModel)]="formLettre.tenue_comptable" />
+                <span>Tenue comptabilité</span>
+              </label>
+              <label class="service-check">
+                <input type="checkbox"
+                       [(ngModel)]="formLettre.declaration_tva" />
+                <span>Déclaration TVA</span>
+              </label>
+              <label class="service-check">
+                <input type="checkbox"
+                       [(ngModel)]="formLettre.declaration_is" />
+                <span>Déclaration IS</span>
+              </label>
+              <label class="service-check">
+                <input type="checkbox"
+                       [(ngModel)]="formLettre.declaration_ir" />
+                <span>Déclaration IR</span>
+              </label>
+              <label class="service-check">
+                <input type="checkbox"
+                       [(ngModel)]="formLettre.bilan_annuel" />
+                <span>Bilan annuel</span>
+              </label>
+              <label class="service-check">
+                <input type="checkbox"
+                       [(ngModel)]="formLettre.conseil_fiscal" />
+                <span>Conseil fiscal</span>
+              </label>
+              <label class="service-check">
+                <input type="checkbox"
+                       [(ngModel)]="formLettre.audit_interne" />
+                <span>Audit interne</span>
+              </label>
+            </div>
+
+            <div class="extra-services">
+              <label class="extra-label">
+                Services additionnels (optionnel)
+              </label>
+              <textarea
+                [(ngModel)]="formLettre.services_custom"
+                placeholder="Ex: Gestion de la paie, Domiciliation..."
+                rows="2"
+                class="extra-textarea">
+            </textarea>
+              <div class="extra-hint">
+                Séparez les services par une virgule ou saut de ligne
+              </div>
+            </div>
+          </div>
+
+          <!-- Articles Lettre de Mission -->
+          <div class="form-section">
+            <div class="articles-header">
+              <h4>
+                <mat-icon>edit_note</mat-icon>
+                Articles du contrat
+              </h4>
+              <button class="btn-add-article"
+                      type="button"
+                      (click)="ajouterArticleLM()">
+                <mat-icon>add</mat-icon>
+                Ajouter un article
+              </button>
+            </div>
+
+            @for (article of articlesLM(); track article.id) {
+              <div class="article-card">
+                <div class="article-card-header">
+                <span class="article-num">
+                  Article {{ article.id }}
+                  @if (article.fixe) { — {{ article.titre }} }
+                </span>
+                  @if (!article.fixe) {
+                    <button class="btn-del-article"
+                            type="button"
+                            (click)="supprimerArticleLM(article.id)">
+                      <mat-icon>delete</mat-icon>
+                    </button>
+                  }
+                </div>
+
+                @if (!article.fixe) {
+                  <input class="article-input-titre"
+                         type="text"
+                         placeholder="Titre (ex: Confidentialité)"
+                         [value]="article.titre"
+                         (input)="updateArticleLM(article.id, 'titre',
+                         $any($event.target).value)" />
+                }
+
+                <!-- Toolbar formatage -->
+                <div class="format-toolbar">
+                  <button type="button" class="fmt-btn"
+                          (click)="appliquerFormat(article.id, 'bold', typeChoisi() === 'LETTRE_MISSION' ? 'LM' : 'MTV')"
+                          title="Gras"><b>B</b></button>
+                  <button type="button" class="fmt-btn"
+                          (click)="appliquerFormat(article.id, 'italic', typeChoisi() === 'LETTRE_MISSION' ? 'LM' : 'MTV')"
+                          title="Italique"><i>I</i></button>
+                  <button type="button" class="fmt-btn"
+                          (click)="appliquerFormat(article.id, 'underline', typeChoisi() === 'LETTRE_MISSION' ? 'LM' : 'MTV')"
+                          title="Souligné"><u>U</u></button>
+                </div>
+                <textarea class="article-input-contenu"
+                          [id]="'textarea-' + (typeChoisi() === 'LETTRE_MISSION' ? 'LM' : 'MTV') + '-' + article.id"
+                          rows="3"
+                          placeholder="Contenu de l'article... (supporte <strong>, <em>, <u>)"
+                          [value]="article.contenu"
+                          (input)="typeChoisi() === 'LETTRE_MISSION'
+            ? updateArticleLM(article.id, 'contenu', $any($event.target).value)
+            : updateArticleMTV(article.id, 'contenu', $any($event.target).value)">
+</textarea>
+                <div class="format-hint">
+                  Tu peux aussi écrire directement :
+                  <code>&lt;strong&gt;gras&lt;/strong&gt;</code>
+                  <code>&lt;em&gt;italique&lt;/em&gt;</code>
+                </div>
+              </div>
+            }
+          </div>
+
+          <div class="modal-actions">
+            <button mat-button (click)="showModal.set(false)">
+              Annuler
+            </button>
+            <button mat-flat-button
+                    style="background:#4338ca;color:white"
+                    [disabled]="envoi() || !formLettre.honoraires"
+                    (click)="envoyer()">
+              <mat-icon>arrow_forward</mat-icon>
+              {{ envoi() ? 'Génération...' : 'Créer le document' }}
+            </button>
+          </div>
+
+        </div>
+      </div>
+    }
+
+    <!-- ══════════════════════════════════════════════
+         MODAL MANDAT TVA
+    ══════════════════════════════════════════════ -->
+    @if (showModal() && typeChoisi() === 'MANDAT_TVA') {
+      <div class="modal-overlay" (click)="showModal.set(false)">
+        <div class="modal-box modal-large"
+             (click)="$event.stopPropagation()">
+
+          <button mat-icon-button class="modal-close"
+                  (click)="showModal.set(false)">
+            <mat-icon>close</mat-icon>
+          </button>
+
+          <h3>
+            <mat-icon style="color:#b45309">receipt</mat-icon>
+            Mandat TVA
+          </h3>
+          <p class="modal-desc">
+            Après création, vous signerez en premier, puis le document
+            sera envoyé au client.
+          </p>
+
+          <div class="client-recap">
+            <mat-icon>business</mat-icon>
+            <div>
+              <strong>{{ clientActif?.nomEntreprise }}</strong>
+              <span>{{ clientActif?.email }}</span>
+            </div>
+          </div>
+
+          <!-- Périodicité -->
+          <div class="form-section">
+            <h4>Périodicité TVA</h4>
+            <div class="periodicite-options">
+              <label class="radio-option"
+                     [class.selected]="formMandat.periodicite === 'mensuelle'">
+                <input type="radio"
+                       [(ngModel)]="formMandat.periodicite"
+                       value="mensuelle" />
+                <div>
+                  <strong>Mensuelle</strong>
+                  <span>Avant le 20 de chaque mois</span>
+                </div>
+              </label>
+              <label class="radio-option"
+                     [class.selected]="formMandat.periodicite === 'trimestrielle'">
+                <input type="radio"
+                       [(ngModel)]="formMandat.periodicite"
+                       value="trimestrielle" />
+                <div>
+                  <strong>Trimestrielle</strong>
+                  <span>Avant le 20 du 1er mois du trimestre</span>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          <!-- Numéro IF client -->
+          <div class="form-section">
+            <h4>Identifiant fiscal client (optionnel)</h4>
+            <div class="form-field">
+              <label>Numéro IF</label>
+              <input type="text"
+                     [(ngModel)]="formMandat.clientIf"
+                     placeholder="Ex: 12345678" />
+            </div>
+          </div>
+
+          <!-- Articles Mandat TVA -->
+          <div class="form-section">
+            <div class="articles-header">
+              <h4>
+                <mat-icon>edit_note</mat-icon>
+                Articles du mandat
+              </h4>
+              <button class="btn-add-article"
+                      type="button"
+                      (click)="ajouterArticleMTV()">
+                <mat-icon>add</mat-icon>
+                Ajouter un article
+              </button>
+            </div>
+
+            @for (article of articlesMTV(); track article.id) {
+              <div class="article-card">
+                <div class="article-card-header">
+                <span class="article-num">
+                  Article {{ article.id }}
+                  @if (article.fixe) { — {{ article.titre }} }
+                </span>
+                  @if (!article.fixe) {
+                    <button class="btn-del-article"
+                            type="button"
+                            (click)="supprimerArticleMTV(article.id)">
+                      <mat-icon>delete</mat-icon>
+                    </button>
+                  }
+                </div>
+
+                @if (!article.fixe) {
+                  <input class="article-input-titre"
+                         type="text"
+                         placeholder="Titre (ex: Pénalités)"
+                         [value]="article.titre"
+                         (input)="updateArticleMTV(article.id, 'titre',
+                         $any($event.target).value)" />
+                }
+
+                <!-- Toolbar formatage -->
+                <div class="format-toolbar">
+                  <button type="button" class="fmt-btn"
+                          (click)="appliquerFormat(article.id, 'bold', typeChoisi() === 'LETTRE_MISSION' ? 'LM' : 'MTV')"
+                          title="Gras"><b>B</b></button>
+                  <button type="button" class="fmt-btn"
+                          (click)="appliquerFormat(article.id, 'italic', typeChoisi() === 'LETTRE_MISSION' ? 'LM' : 'MTV')"
+                          title="Italique"><i>I</i></button>
+                  <button type="button" class="fmt-btn"
+                          (click)="appliquerFormat(article.id, 'underline', typeChoisi() === 'LETTRE_MISSION' ? 'LM' : 'MTV')"
+                          title="Souligné"><u>U</u></button>
+                </div>
+                <textarea class="article-input-contenu"
+                          [id]="'textarea-' + (typeChoisi() === 'LETTRE_MISSION' ? 'LM' : 'MTV') + '-' + article.id"
+                          rows="3"
+                          placeholder="Contenu de l'article... (supporte <strong>, <em>, <u>)"
+                          [value]="article.contenu"
+                          (input)="typeChoisi() === 'LETTRE_MISSION'
+            ? updateArticleLM(article.id, 'contenu', $any($event.target).value)
+            : updateArticleMTV(article.id, 'contenu', $any($event.target).value)">
+</textarea>
+                <div class="format-hint">
+                  Tu peux aussi écrire directement :
+                  <code>&lt;strong&gt;gras&lt;/strong&gt;</code>
+                  <code>&lt;em&gt;italique&lt;/em&gt;</code>
+                </div>
+              </div>
+            }
+          </div>
+
+          <div class="modal-actions">
+            <button mat-button (click)="showModal.set(false)">
+              Annuler
+            </button>
+            <button mat-flat-button
+                    style="background:#b45309;color:white"
+                    [disabled]="envoi()"
+                    (click)="envoyer()">
+              <mat-icon>arrow_forward</mat-icon>
+              {{ envoi() ? 'Génération...' : 'Créer le document' }}
+            </button>
+          </div>
+
+        </div>
+      </div>
+    }
+
+    <!-- ══════════════════════════════════════════════
+         MODAL SIGNATURE COMPTABLE
+    ══════════════════════════════════════════════ -->
+    @if (showSignerModal()) {
+      <div class="modal-overlay" (click)="showSignerModal.set(false)">
+        <div class="modal-box modal-signer"
+             (click)="$event.stopPropagation()">
+
+          <button mat-icon-button class="modal-close"
+                  (click)="showSignerModal.set(false)">
+            <mat-icon>close</mat-icon>
+          </button>
+
+          <h3>
+            <mat-icon style="color:#4338ca">draw</mat-icon>
+            Votre signature
+          </h3>
+          <p class="modal-desc">
+            Signez ci-dessous. Le document sera ensuite envoyé à
+            <strong>{{ signatureEnCours()?.clientNom }}</strong>
+            pour sa signature.
+          </p>
+
+          <div class="canvas-wrapper">
+            <canvas #canvasComptable width="560" height="160"
+                    class="sig-canvas"></canvas>
+            <div class="canvas-placeholder"
+                 [style.display]="hasDessin() ? 'none' : 'flex'">
+              <mat-icon>gesture</mat-icon>
+              <span>Signez ici avec votre souris</span>
+            </div>
+          </div>
+
+          <div class="canvas-actions">
+            <button mat-stroked-button (click)="effacerCanvas()"
+                    [disabled]="!hasDessin()">
+              <mat-icon>refresh</mat-icon> Effacer
+            </button>
+          </div>
+
+          <div class="mention-legale">
+            <mat-icon>verified</mat-icon>
+            En confirmant, vous apposez votre signature électronique.
+            Un email sera envoyé au client.
+          </div>
+
+          <div class="modal-actions">
+            <button mat-button (click)="showSignerModal.set(false)">
+              Annuler
+            </button>
+            <button mat-flat-button
+                    style="background:#4338ca;color:white"
+                    [disabled]="!hasDessin() || envoiSig()"
+                    (click)="confirmerSignatureComptable()">
+              <mat-icon>check_circle</mat-icon>
+              {{ envoiSig() ? 'Envoi...' : 'Signer et envoyer au client' }}
+            </button>
+          </div>
+
+        </div>
+      </div>
+    }
+
+  </div>
+</div>

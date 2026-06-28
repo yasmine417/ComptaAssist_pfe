@@ -1,0 +1,90 @@
+<div class="dash-layout">
+  <app-comptable-sidebar></app-comptable-sidebar>
+
+  <main class="main-content">
+    <div class="top-bar">
+      <div>
+        <h1 class="page-title">Alertes Fiscales</h1>
+        <p class="page-sub">Suivi automatique des échéances et obligations fiscales</p>
+      </div>
+    </div>
+
+    <!-- Compteurs -->
+    <div class="counters-row">
+      <div class="counter critical">
+        <mat-icon>error</mat-icon>
+        <div>
+          <span class="count">{{ countCritical }}</span>
+          <span class="lbl">Critiques</span>
+        </div>
+      </div>
+      <div class="counter warning">
+        <mat-icon>warning</mat-icon>
+        <div>
+          <span class="count">{{ countWarning }}</span>
+          <span class="lbl">Avertissements</span>
+        </div>
+      </div>
+      <div class="counter info">
+        <mat-icon>info</mat-icon>
+        <div>
+          <span class="count">{{ countInfo }}</span>
+          <span class="lbl">Informations</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Filtres -->
+    <div class="filters">
+      @for (f of ['TOUTES','CRITICAL','WARNING','INFO']; track f) {
+        <button class="filter-btn" [class.active]="filterNiveau() === f"
+                (click)="filterNiveau.set(f)">
+          {{ f }}
+        </button>
+      }
+    </div>
+
+    <!-- Liste alertes -->
+    <div class="alertes-list">
+      @if (filteredAlertes.length === 0) {
+        <div class="empty-state">
+          <mat-icon>notifications_none</mat-icon>
+          <h3>Aucune alerte active</h3>
+          <p>Toutes les obligations fiscales sont à jour. Spring Boot vérifie les échéances chaque matin.</p>
+        </div>
+      } @else {
+        @for (a of filteredAlertes; track a.id) {
+          <div class="alerte-card animate-fade-in-up" [class]="'niveau-' + (a.niveau ?? 'info').toLowerCase()"
+               [class]="'icon-' + (a.niveau ?? 'info').toLowerCase()">
+            <div class="alerte-icon" [class]="'icon-' + a.niveau.toLowerCase()">
+              <mat-icon>{{ getNiveauIcon(a.niveau) }}</mat-icon>
+            </div>
+            <div class="alerte-body">
+              <div class="alerte-meta">
+                <span [class]="getNiveauClass(a.niveau)">{{ a.niveau }}</span>
+                <span class="alerte-type">{{ a.type }}</span>
+                <span class="alerte-date">{{ a.dateCreation | date:'dd/MM/yyyy' }}</span>
+              </div>
+              <p class="alerte-message">{{ a.message }}</p>
+            </div>
+            <div class="alerte-actions">
+              <button mat-flat-button class="btn-traiter" (click)="marquerTraite(a.id)">
+                <mat-icon>check</mat-icon>
+                Traité
+              </button>
+            </div>
+          </div>
+        }
+      }
+    </div>
+
+    <!-- Info automatique -->
+    <div class="info-banner">
+      <mat-icon>schedule</mat-icon>
+      <div>
+        <strong>Vérification automatique quotidienne</strong>
+        <p>Spring Boot vérifie chaque matin les échéances fiscales et envoie des alertes email automatiquement 7 jours avant chaque déclaration.</p>
+      </div>
+    </div>
+  </main>
+</div>

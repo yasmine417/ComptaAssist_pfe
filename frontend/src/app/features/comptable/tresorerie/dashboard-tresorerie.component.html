@@ -1,0 +1,618 @@
+<div class="dashboard-layout">
+
+  <app-comptable-sidebar></app-comptable-sidebar>
+
+  <main class="dashboard-main">
+
+    <!-- ── HEADER ──────────────────────────────── -->
+    <div class="dash-header">
+      <div class="dash-title">
+        <mat-icon>account_balance_wallet</mat-icon>
+        <div>
+          <h1>Trésorerie & CA</h1>
+          <span class="dash-subtitle">
+            Tableau de bord temps réel
+          </span>
+        </div>
+      </div>
+      <div class="dash-header-right">
+        @if (dernierMAJ()) {
+          <span class="maj-info">
+            <mat-icon>sync</mat-icon>
+            Mis à jour à {{ formatHeure(dernierMAJ()!) }}
+            <span class="polling-dot"></span>
+          </span>
+        }
+        <button mat-icon-button
+                matTooltip="Rafraîchir"
+                (click)="rafraichir()">
+          <mat-icon>refresh</mat-icon>
+        </button>
+      </div>
+    </div>
+
+    @if (loading()) {
+      <mat-progress-bar mode="indeterminate"
+                        class="loading-bar">
+      </mat-progress-bar>
+    }
+
+    @if (erreur()) {
+      <div class="erreur-banner">
+        <mat-icon>error_outline</mat-icon>
+        {{ erreur() }}
+      </div>
+    }
+
+    @if (dashboard()) {
+
+      <!-- ── KPIs ──────────────────────────────── -->
+      <section class="kpis-grid">
+
+        <!-- CA Facturé -->
+        <div class="kpi-card kpi-ca">
+          <div class="kpi-icon">
+            <mat-icon>receipt_long</mat-icon>
+          </div>
+          <div class="kpi-body">
+            <span class="kpi-label">CA facturé (HT)</span>
+            <span class="kpi-value">
+              {{ formatMontant(kpis?.caFactureMoisHt) }}
+              <span class="kpi-devise">MAD</span>
+            </span>
+            <span class="kpi-sub">
+              TTC :
+              {{ formatMontantComplet(kpis?.caFactureMoisTtc) }}
+            </span>
+          </div>
+        </div>
+
+        <!-- CA Encaissé -->
+        <div class="kpi-card kpi-encaisse">
+          <div class="kpi-icon">
+            <mat-icon>savings</mat-icon>
+          </div>
+          <div class="kpi-body">
+            <span class="kpi-label">CA encaissé</span>
+            <span class="kpi-value">
+              {{ formatMontant(kpis?.caEncaisseMois) }}
+              <span class="kpi-devise">MAD</span>
+            </span>
+            <div class="kpi-taux">
+              <div class="taux-bar">
+                <div class="taux-fill"
+                     [style.width.%]="kpis?.tauxEncaissement">
+                </div>
+              </div>
+              <span class="taux-val">
+                {{ formatPct(kpis?.tauxEncaissement) }}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Trésorerie nette -->
+        <div class="kpi-card"
+             [class.kpi-positif]="(kpis?.tresorerieNette ?? 0) >= 0"
+             [class.kpi-negatif]="(kpis?.tresorerieNette ?? 0) < 0">
+          <div class="kpi-icon">
+            <mat-icon>
+              {{ (kpis?.tresorerieNette ?? 0) >= 0
+              ? 'trending_up' : 'trending_down' }}
+            </mat-icon>
+          </div>
+          <div class="kpi-body">
+            <span class="kpi-label">Solde banque réel</span>
+            <span class="kpi-value">
+              {{ formatMontant(kpis?.soldeBanqueReel ?? kpis?.tresorerieNette) }}
+              <span class="kpi-devise">MAD</span>
+            </span>
+            <span class="kpi-sub kpi-sub-real">
+              <mat-icon style="font-size:11px;width:11px;height:11px">
+                account_balance
+              </mat-icon>
+              Depuis journal comptable (5141)
+            </span>
+            @if ((kpis?.soldeBanqueReel ?? 0) !== (kpis?.tresorerieNette ?? 0)
+            && (kpis?.tresorerieNette ?? 0) !== 0) {
+              <span class="kpi-sub" style="color:#94a3b8;font-size:10px">
+                Flux mois : {{ formatMontant(kpis?.tresorerieNette) }}
+              </span>
+            }
+          </div>
+        </div>
+
+        <!-- Créances -->
+        <div class="kpi-card kpi-creances">
+          <div class="kpi-icon">
+            <mat-icon>arrow_downward</mat-icon>
+          </div>
+          <div class="kpi-body">
+            <span class="kpi-label">Créances à encaisser</span>
+            <span class="kpi-value">
+              {{ formatMontant(kpis?.creancesTotales) }}
+              <span class="kpi-devise">MAD</span>
+            </span>
+            <span class="kpi-sub">
+              Factures clients approuvées
+            </span>
+          </div>
+        </div>
+
+        <!-- Dettes -->
+        <div class="kpi-card kpi-dettes">
+          <div class="kpi-icon">
+            <mat-icon>arrow_upward</mat-icon>
+          </div>
+          <div class="kpi-body">
+            <span class="kpi-label">Dettes à payer</span>
+            <span class="kpi-value">
+              {{ formatMontant(kpis?.dettesTotales) }}
+              <span class="kpi-devise">MAD</span>
+            </span>
+            <span class="kpi-sub">
+              Fournisseurs approuvés
+            </span>
+          </div>
+        </div>
+
+        <!-- Factures en retard -->
+        <div class="kpi-card kpi-retard"
+             [class.kpi-alerte]="(kpis?.facturesEnRetard ?? 0) > 0">
+          <div class="kpi-icon">
+            <mat-icon>schedule</mat-icon>
+          </div>
+          <div class="kpi-body">
+            <span class="kpi-label">Factures en retard</span>
+            <span class="kpi-value kpi-count">
+              {{ kpis?.facturesEnRetard ?? 0 }}
+            </span>
+            <span class="kpi-sub">
+              Total :
+              {{ formatMontantComplet(aging?.totalEnRetard) }}
+            </span>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- ── GRAPHIQUES ──────────────────────────── -->
+      <section class="graphiques-section">
+
+        <!-- Sélecteur d'onglets graphique -->
+        <div class="graph-tabs">
+          <button class="graph-tab"
+                  [class.active]="ongletGraphique() === 'ca'"
+                  (click)="ongletGraphique.set('ca')">
+            <mat-icon>bar_chart</mat-icon>
+            Évolution CA
+          </button>
+          <button class="graph-tab"
+                  [class.active]="ongletGraphique() === 'tresorerie'"
+                  (click)="ongletGraphique.set('tresorerie')">
+            <mat-icon>waterfall_chart</mat-icon>
+            Trésorerie
+          </button>
+
+        </div>
+
+        <!-- Graphique CA ─────────────────────────── -->
+        @if (ongletGraphique() === 'ca') {
+          <div class="graphique-card">
+            <div class="graph-header">
+              <h3>Chiffre d'Affaires — 6 derniers mois</h3>
+              <div class="graph-legende">
+                <span class="leg-item leg-facture">
+                  <span class="leg-dot"></span> Facturé (HT)
+                </span>
+                <span class="leg-item leg-encaisse">
+                  <span class="leg-dot"></span> Encaissé
+                </span>
+              </div>
+            </div>
+            <div class="barres-chart">
+              @for (m of evolutionCa; track m.mois) {
+                <div class="barre-col">
+                  <div class="barres-wrap">
+                    <div class="barre barre-facture"
+                         [style.height.%]="pct(m.caFacture, maxEvolutionCa())"
+                         [matTooltip]="'Facturé : ' + formatMontantComplet(m.caFacture)">
+                    </div>
+                    <div class="barre barre-encaisse"
+                         [style.height.%]="pct(m.caEncaisse, maxEvolutionCa())"
+                         [matTooltip]="'Encaissé : ' + formatMontantComplet(m.caEncaisse)">
+                    </div>
+                  </div>
+                  <span class="barre-label">{{ m.moisLabel }}</span>
+                  <span class="barre-val">
+                    {{ formatMontant(m.caFacture) }}
+                  </span>
+                </div>
+              }
+            </div>
+          </div>
+        }
+
+        <!-- Graphique Trésorerie ─────────────────── -->
+        @if (ongletGraphique() === 'tresorerie') {
+          <div class="graphique-card">
+            <div class="graph-header">
+              <h3>Flux de trésorerie — 6 derniers mois</h3>
+              <div class="graph-legende">
+                <span class="leg-item">
+                  <span class="leg-dot leg-enc"></span> Encaissements
+                </span>
+                <span class="leg-item">
+                  <span class="leg-dot leg-dec"></span> Décaissements
+                </span>
+              </div>
+            </div>
+            <div class="barres-chart">
+              @for (m of evolutionTreso; track m.mois) {
+                <div class="barre-col">
+                  <div class="solde-badge"
+                       [class.positif]="m.solde >= 0"
+                       [class.negatif]="m.solde < 0">
+                    {{ m.solde >= 0 ? '+' : '' }}{{ formatMontant(m.solde) }}
+                  </div>
+                  <div class="barres-wrap">
+                    <div class="barre barre-enc"
+                         [style.height.%]="pct(m.encaissements, maxEvolutionTreso())"
+                         [matTooltip]="'Enc. : ' + formatMontantComplet(m.encaissements)">
+                    </div>
+                    <div class="barre barre-dec"
+                         [style.height.%]="pct(m.decaissements, maxEvolutionTreso())"
+                         [matTooltip]="'Déc. : ' + formatMontantComplet(m.decaissements)">
+                    </div>
+                  </div>
+                  <span class="barre-label">{{ m.moisLabel }}</span>
+                </div>
+              }
+            </div>
+          </div>
+        }
+
+        <!-- Graphique Prévisions ─────────────────── -->
+        @if (ongletGraphique() === 'previsions') {
+          <div class="graphique-card">
+            <div class="graph-header">
+              <h3>Prévisions de trésorerie — 3 prochains mois</h3>
+              <p class="graph-note">
+                Basé sur les échéances des factures approuvées
+              </p>
+            </div>
+            @if (previsions.length === 0) {
+              <div class="graph-empty">
+                <mat-icon>info_outline</mat-icon>
+                Aucune facture approuvée avec échéance à venir
+              </div>
+            } @else {
+              <div class="previsions-grid">
+                @for (p of previsions; track p.mois) {
+                  <div class="prev-card"
+                       [class.prev-positif]="p.soldePrevu >= 0"
+                       [class.prev-negatif]="p.soldePrevu < 0">
+                    <span class="prev-mois">{{ p.moisLabel }}</span>
+                    <div class="prev-row">
+                      <span class="prev-label">
+                        <mat-icon>arrow_downward</mat-icon>
+                        Encaissements prévus
+                      </span>
+                      <span class="prev-val enc">
+                        +{{ formatMontantComplet(p.encaissementsPrevu) }}
+                      </span>
+                    </div>
+                    <div class="prev-row">
+                      <span class="prev-label">
+                        <mat-icon>arrow_upward</mat-icon>
+                        Décaissements prévus
+                      </span>
+                      <span class="prev-val dec">
+                        -{{ formatMontantComplet(p.decaissementsPrevu) }}
+                      </span>
+                    </div>
+                    <div class="prev-solde">
+                      <span>Solde prévu</span>
+                      <strong>
+                        {{ p.soldePrevu >= 0 ? '+' : '' }}
+                        {{ formatMontantComplet(p.soldePrevu) }}
+                      </strong>
+                    </div>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        }
+
+      </section>
+
+      <!-- ── DOUBLE COLONNE : Aging + Top Tiers ─── -->
+      <section class="double-col">
+
+        <!-- Aging créances ─────────────────────── -->
+        <div class="panel-card">
+          <h3 class="panel-title">
+            <mat-icon>hourglass_empty</mat-icon>
+            Aging des créances
+          </h3>
+          @if (aging?.totalEnRetard === 0) {
+            <div class="panel-empty">
+              <mat-icon>check_circle</mat-icon>
+              Aucune créance en retard
+            </div>
+          } @else {
+            <div class="aging-grid">
+
+              <div class="aging-item aging-30">
+                <div class="aging-header">
+                  <span class="aging-tranche">0 – 30 jours</span>
+                  <span class="aging-nb">
+                    {{ aging?.nb0_30 }} fact.
+                  </span>
+                </div>
+                <div class="aging-bar-wrap">
+                  <div class="aging-bar"
+                       [style.width.%]="agingPct(aging?.tranche0_30 ?? 0)">
+                  </div>
+                </div>
+                <span class="aging-montant">
+                  {{ formatMontantComplet(aging?.tranche0_30) }}
+                </span>
+              </div>
+
+              <div class="aging-item aging-60">
+                <div class="aging-header">
+                  <span class="aging-tranche">31 – 60 jours</span>
+                  <span class="aging-nb">
+                    {{ aging?.nb31_60 }} fact.
+                  </span>
+                </div>
+                <div class="aging-bar-wrap">
+                  <div class="aging-bar"
+                       [style.width.%]="agingPct(aging?.tranche31_60 ?? 0)">
+                  </div>
+                </div>
+                <span class="aging-montant">
+                  {{ formatMontantComplet(aging?.tranche31_60) }}
+                </span>
+              </div>
+
+              <div class="aging-item aging-90">
+                <div class="aging-header">
+                  <span class="aging-tranche">61 – 90 jours</span>
+                  <span class="aging-nb">
+                    {{ aging?.nb61_90 }} fact.
+                  </span>
+                </div>
+                <div class="aging-bar-wrap">
+                  <div class="aging-bar"
+                       [style.width.%]="agingPct(aging?.tranche61_90 ?? 0)">
+                  </div>
+                </div>
+                <span class="aging-montant">
+                  {{ formatMontantComplet(aging?.tranche61_90) }}
+                </span>
+              </div>
+
+              <div class="aging-item aging-plus">
+                <div class="aging-header">
+                  <span class="aging-tranche">+ 90 jours</span>
+                  <span class="aging-nb">
+                    {{ aging?.nb90plus }} fact.
+                  </span>
+                </div>
+                <div class="aging-bar-wrap">
+                  <div class="aging-bar"
+                       [style.width.%]="agingPct(aging?.tranche90plus ?? 0)">
+                  </div>
+                </div>
+                <span class="aging-montant">
+                  {{ formatMontantComplet(aging?.tranche90plus) }}
+                </span>
+              </div>
+
+              <div class="aging-total">
+                <span>Total en retard</span>
+                <strong>
+                  {{ formatMontantComplet(aging?.totalEnRetard) }}
+                </strong>
+              </div>
+            </div>
+          }
+        </div>
+
+        <!-- Top Clients / Fournisseurs ─────────── -->
+        <div class="panel-card">
+          <div class="panel-title-tabs">
+            <h3 class="panel-title">
+              <mat-icon>people</mat-icon>
+              Top tiers
+            </h3>
+            <div class="mini-tabs">
+              <button class="mini-tab"
+                      [class.active]="ongletTableau() === 'topClients'"
+                      (click)="ongletTableau.set('topClients')">
+                Clients
+              </button>
+              <button class="mini-tab"
+                      [class.active]="ongletTableau() === 'topFournisseurs'"
+                      (click)="ongletTableau.set('topFournisseurs')">
+                Fournisseurs
+              </button>
+            </div>
+          </div>
+
+          <div class="top-list">
+            @for (t of (ongletTableau() === 'topClients' ? topClients : topFournisseurs);
+              track t.nom;
+              let i = $index) {
+              <div class="top-item">
+                <span class="top-rank">{{ i + 1 }}</span>
+                <div class="top-info">
+                  <span class="top-nom">{{ t.nom }}</span>
+                  <div class="top-bar-wrap">
+                    <div class="top-bar"
+                         [style.width.%]="topPct(t.montantFacture,
+                           ongletTableau() === 'topClients'
+                             ? topClients : topFournisseurs)">
+                    </div>
+                  </div>
+                </div>
+                <div class="top-montants">
+                  <span class="top-facture">
+                    {{ formatMontant(t.montantFacture) }}
+                  </span>
+                  <span class="top-facts">
+                    {{ t.nbFactures }} fact.
+                  </span>
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+
+      </section>
+
+      <!-- ── TABLEAUX ───────────────────────────── -->
+      <section class="tableaux-section">
+
+        <div class="tableau-tabs">
+          <button class="tableau-tab"
+                  [class.active]="ongletTableau() === 'retards'"
+                  (click)="ongletTableau.set('retards')">
+            <mat-icon>warning_amber</mat-icon>
+            Factures en retard
+            @if ((kpis?.facturesEnRetard ?? 0) > 0) {
+              <span class="tab-badge-alerte">
+                {{ kpis?.facturesEnRetard }}
+              </span>
+            }
+          </button>
+          <button class="tableau-tab"
+                  [class.active]="ongletTableau() === 'encaissements'"
+                  (click)="ongletTableau.set('encaissements')">
+            <mat-icon>payments</mat-icon>
+            Derniers mouvements
+          </button>
+        </div>
+
+        <!-- Tableau retards ──────────────────────── -->
+        @if (ongletTableau() === 'retards') {
+          @if (retards.length === 0) {
+            <div class="tableau-empty">
+              <mat-icon>check_circle</mat-icon>
+              <p>Aucune facture en retard</p>
+            </div>
+          } @else {
+            <div class="tableau-scroll">
+              <table class="dash-table">
+                <thead>
+                <tr>
+                  <th>Tiers</th>
+                  <th>N° Facture</th>
+                  <th>Échéance</th>
+                  <th>Retard</th>
+                  <th>Montant dû</th>
+                  <th>Type</th>
+                </tr>
+                </thead>
+                <tbody>
+                  @for (f of retards; track f.id) {
+                    <tr [class]="retardClass(f.joursRetard)">
+                      <td class="td-tiers">
+                        {{ f.tiers || '—' }}
+                      </td>
+                      <td class="mono">
+                        {{ f.numeroFacture || '—' }}
+                      </td>
+                      <td>{{ formatDate(f.echeance) }}</td>
+                      <td>
+                        <span class="retard-badge"
+                              [class]="retardClass(f.joursRetard)">
+                          {{ f.joursRetard }} j
+                        </span>
+                      </td>
+                      <td class="montant-cell">
+                        {{ formatMontantComplet(
+                        f.montantDu, f.devise) }}
+                      </td>
+                      <td>
+                        <span class="type-badge"
+                              [class.creance]="f.type === 'CREANCE'"
+                              [class.dette]="f.type === 'DETTE'">
+                          {{ f.type }}
+                        </span>
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
+        }
+
+        <!-- Tableau encaissements ────────────────── -->
+        @if (ongletTableau() === 'encaissements') {
+          @if (encaissements.length === 0) {
+            <div class="tableau-empty">
+              <mat-icon>info_outline</mat-icon>
+              <p>Aucun mouvement enregistré</p>
+            </div>
+          } @else {
+            <div class="tableau-scroll">
+              <table class="dash-table">
+                <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Tiers</th>
+                  <th>N° Facture</th>
+                  <th>Montant</th>
+                  <th>Mode</th>
+                  <th>Type</th>
+                </tr>
+                </thead>
+                <tbody>
+                  @for (m of encaissements; track m.id) {
+                    <tr>
+                      <td>{{ formatDate(m.date) }}</td>
+                      <td class="td-tiers">
+                        {{ m.tiers || '—' }}
+                      </td>
+                      <td class="mono">
+                        {{ m.numeroFacture || '—' }}
+                      </td>
+                      <td class="montant-cell"
+                          [class.montant-enc]="m.type === 'ENCAISSEMENT'"
+                          [class.montant-dec]="m.type === 'DECAISSEMENT'">
+                        {{ m.type === 'ENCAISSEMENT' ? '+' : '-' }}
+                        {{ formatMontantComplet(m.montant) }}
+                      </td>
+                      <td>{{ m.mode || '—' }}</td>
+                      <td>
+                        <span class="type-badge"
+                              [class.creance]="m.type === 'ENCAISSEMENT'"
+                              [class.dette]="m.type === 'DECAISSEMENT'">
+                          {{ m.type === 'ENCAISSEMENT'
+                          ? 'Encaissement' : 'Décaissement' }}
+                        </span>
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
+        }
+
+      </section>
+
+    } @else if (!loading()) {
+      <div class="dash-empty">
+        <mat-icon>bar_chart</mat-icon>
+        <p>Aucune donnée disponible</p>
+      </div>
+    }
+
+  </main>
+</div>

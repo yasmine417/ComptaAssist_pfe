@@ -1,0 +1,122 @@
+<div class="auth-layout">
+  <div class="auth-left">
+    <div class="auth-left-content">
+      <a routerLink="/" class="back-home">
+        <mat-icon>arrow_back</mat-icon>
+        Retour à l'accueil
+      </a>
+      <div class="brand">
+        <mat-icon class="brand-icon">account_balance</mat-icon>
+        <span>Compta<strong>Assist</strong></span>
+      </div>
+      <h1>Créez votre cabinet</h1>
+      <p>Rejoignez la plateforme IA de comptabilité marocaine et transformez votre façon de travailler.</p>
+
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div>
+            <strong>Créez votre compte</strong>
+            <p>Remplissez le formulaire en 30 secondes</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div>
+            <strong>Configurez votre cabinet</strong>
+            <p>Ajoutez vos comptables et clients</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div>
+            <strong>L'IA travaille pour vous</strong>
+            <p>Analyses, rapports et alertes automatiques</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="auth-right">
+    <div class="auth-card">
+      <div class="auth-card-header">
+        <h2>Créer un compte</h2>
+        <p>Toutes les informations sont requises</p>
+      </div>
+
+      <form [formGroup]="form" (ngSubmit)="onSubmit()" class="auth-form">
+        <div class="form-row">
+          <mat-form-field appearance="outline">
+            <mat-label>Prénom</mat-label>
+            <mat-icon matPrefix>person</mat-icon>
+            <input matInput formControlName="prenom" placeholder="Mohammed" />
+            @if (form.get('prenom')?.hasError('required') && form.get('prenom')?.touched) {
+              <mat-error>Le prénom est requis</mat-error>
+            }
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Nom</mat-label>
+            <input matInput formControlName="nom" placeholder="Alaoui" />
+            @if (form.get('nom')?.hasError('required') && form.get('nom')?.touched) {
+              <mat-error>Le nom est requis</mat-error>
+            }
+          </mat-form-field>
+        </div>
+
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Adresse email professionnelle</mat-label>
+          <mat-icon matPrefix>email</mat-icon>
+          <input matInput type="email" formControlName="email" placeholder="direction@cabinet.ma" />
+          @if (form.get('email')?.hasError('email') && form.get('email')?.touched) {
+            <mat-error>Format email invalide</mat-error>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Mot de passe</mat-label>
+          <mat-icon matPrefix>lock</mat-icon>
+          <input matInput [type]="hidePassword() ? 'password' : 'text'"
+                 formControlName="password" placeholder="8 caractères minimum" />
+          <button mat-icon-button matSuffix type="button"
+                  (click)="hidePassword.set(!hidePassword())">
+            <mat-icon>{{ hidePassword() ? 'visibility' : 'visibility_off' }}</mat-icon>
+          </button>
+          @if (form.get('password')?.hasError('minlength') && form.get('password')?.touched) {
+            <mat-error>8 caractères minimum requis</mat-error>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Rôle</mat-label>
+          <mat-icon matPrefix>badge</mat-icon>
+          <mat-select formControlName="role">
+            <mat-option value="DIRECTEUR">Directeur de Cabinet</mat-option>
+            <mat-option value="COMPTABLE">Expert Comptable</mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        <button mat-flat-button type="submit"
+                class="submit-btn"
+                [disabled]="form.invalid || loading()">
+          @if (loading()) {
+            <mat-spinner diameter="20"></mat-spinner>
+            Création en cours...
+          } @else {
+            <mat-icon>person_add</mat-icon>
+            Créer mon compte
+          }
+        </button>
+      </form>
+
+      <div class="auth-divider">
+        <span>Vous avez déjà un compte ?</span>
+      </div>
+      <a routerLink="/auth/login" class="login-link">
+        Se connecter
+        <mat-icon>arrow_forward</mat-icon>
+      </a>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,44 @@
+<div class="visio-container">
+
+  @if (!connecte()) {
+    <div class="join-screen">
+      <mat-icon class="join-icon">videocam</mat-icon>
+      <h2>Rejoindre la réunion</h2>
+      <p>Salle : {{ roomNameActuel() }}</p>
+      <button
+        class="btn-join"
+        [disabled]="connexionEnCours() || !roomNameActuel()"
+        (click)="rejoindreReunion()">
+        @if (connexionEnCours()) {
+          Connexion...
+        } @else {
+          <mat-icon>videocam</mat-icon>
+          Rejoindre
+        }
+      </button>
+    </div>
+  }
+
+  @if (connecte()) {
+    <div class="video-grid">
+      <video #localVideo autoplay muted class="local-video"></video>
+      <div #remoteContainer class="remote-container"></div>
+    </div>
+
+    <div class="controls">
+      <button (click)="toggleMic()">
+        <mat-icon>{{ micActif() ? 'mic' : 'mic_off' }}</mat-icon>
+      </button>
+      <button (click)="toggleCamera()">
+        <mat-icon>{{ cameraActive() ? 'videocam' : 'videocam_off' }}</mat-icon>
+      </button>
+      <button (click)="toggleScreenShare()">
+        <mat-icon>screen_share</mat-icon>
+      </button>
+      <button class="quit-btn" (click)="quitterReunion()">
+        <mat-icon>call_end</mat-icon>
+      </button>
+    </div>
+  }
+
+</div>

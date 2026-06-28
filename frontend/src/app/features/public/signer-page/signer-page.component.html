@@ -1,0 +1,89 @@
+<div class="signer-page">
+
+  @if (etat() === 'chargement') {
+    <div class="center-box">
+      <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+      <p>Chargement du document...</p>
+    </div>
+  }
+
+  @if (etat() === 'erreur') {
+    <div class="center-box erreur">
+      <mat-icon>error</mat-icon>
+      <h2>Lien invalide</h2>
+      <p>Ce lien de signature est invalide ou n'existe pas.</p>
+    </div>
+  }
+
+  @if (etat() === 'expire') {
+    <div class="center-box expire">
+      <mat-icon>schedule</mat-icon>
+      <h2>Lien expiré</h2>
+      <p>Ce lien a expiré. Contactez votre cabinet comptable.</p>
+    </div>
+  }
+
+  @if (etat() === 'signe') {
+    <div class="center-box signe">
+      <mat-icon>check_circle</mat-icon>
+      <h2>Document signé ✓</h2>
+      <p>{{ message() || 'Ce document a déjà été signé. Merci !' }}</p>
+      <p style="font-size:13px;color:#64748b;margin-top:8px">Vous pouvez fermer cette page.</p>
+    </div>
+  }
+
+  @if (etat() === 'attente') {
+    <div class="signature-container">
+
+      <div class="sig-header">
+        <div class="logo">Compta<span>Assist</span></div>
+        <div class="sig-title">Document à signer</div>
+      </div>
+
+      <div class="client-info">
+        <mat-icon>person</mat-icon>
+        <span>Bonjour <strong>{{ clientNom() }}</strong>, veuillez lire et signer le document ci-dessous.</span>
+      </div>
+
+      @if (urlPdfSafe()) {
+        <div class="pdf-viewer">
+          <iframe [src]="urlPdfSafe()" class="pdf-iframe" title="Document à signer"></iframe>
+        </div>
+      }
+
+      <div class="signature-zone">
+        <h3><mat-icon>draw</mat-icon> Votre signature</h3>
+        <p class="sig-instruction">Signez dans le cadre ci-dessous avec votre souris ou votre doigt :</p>
+
+        <div class="canvas-wrapper">
+          <canvas #canvas width="600" height="150" class="sig-canvas"></canvas>
+          <div class="canvas-placeholder" [style.display]="hasDessin() ? 'none' : 'flex'">
+            <mat-icon>gesture</mat-icon>
+            <span>Signez ici</span>
+          </div>
+        </div>
+
+        <div class="canvas-actions">
+          <button mat-stroked-button (click)="effacer()" [disabled]="!hasDessin()">
+            <mat-icon>refresh</mat-icon> Effacer
+          </button>
+        </div>
+
+        <div class="mention-legale">
+          <mat-icon>verified</mat-icon>
+          En cliquant sur "Confirmer ma signature", j'accepte les termes du document et j'appose ma signature électronique.
+        </div>
+
+        <button mat-flat-button
+                class="btn-signer"
+                [disabled]="!hasDessin() || envoi()"
+                (click)="confirmerSignature()">
+          <mat-icon>check_circle</mat-icon>
+          {{ envoi() ? 'Signature en cours...' : 'Confirmer ma signature' }}
+        </button>
+      </div>
+
+    </div>
+  }
+
+</div>

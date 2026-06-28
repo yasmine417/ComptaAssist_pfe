@@ -1,0 +1,539 @@
+<div class="dash-layout">
+  <app-comptable-sidebar></app-comptable-sidebar>
+
+  <main class="main-content">
+
+    <!-- HEADER -->
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">
+          <mat-icon>analytics</mat-icon>
+          Analyse Bilan
+        </h1>
+        <p class="page-sub">
+          Situation patrimoniale —
+          {{ clientCtx.clientActif()?.nomEntreprise || 'Aucun client sélectionné' }}
+        </p>
+      </div>
+
+      <div class="header-actions">
+        <div class="exercice-selector">
+          @for (ex of exercices; track ex) {
+            <button [class.active]="exercice === ex"
+                    (click)="changerExercice(ex)">
+              {{ ex }}
+            </button>
+          }
+        </div>
+
+        @if (!modeEdition()) {
+          <button mat-flat-button class="btn-edit"
+                  (click)="activerEdition()">
+            <mat-icon>edit</mat-icon>
+            Modifier le bilan
+          </button>
+        } @else {
+          <button mat-flat-button class="btn-save"
+                  (click)="quitterEdition()">
+            <mat-icon>lock</mat-icon>
+            Terminer
+          </button>
+        }
+
+        <button mat-flat-button class="btn-excel"
+                (click)="exporterExcel()"
+                [disabled]="!bilan()">
+          <mat-icon>download</mat-icon>
+          Export Excel
+        </button>
+
+        <button mat-flat-button class="btn-refresh"
+                (click)="chargerBilan()"
+                [disabled]="loading()">
+          <mat-icon>refresh</mat-icon>
+          Actualiser
+        </button>
+      </div>
+    </div>
+
+    <!-- PAS DE CLIENT -->
+    @if (!clientCtx.clientActif()) {
+      <div class="empty-state">
+        <mat-icon>business</mat-icon>
+        <h3>Aucun client sélectionné</h3>
+        <p>Sélectionnez un client dans la liste déroulante de la sidebar</p>
+      </div>
+    }
+
+    <!-- CHARGEMENT -->
+    @if (loading()) {
+      <div class="loading-state">
+        <mat-spinner diameter="40"></mat-spinner>
+        <p>Calcul du bilan en cours...</p>
+      </div>
+    }
+
+    <!-- ERREUR -->
+    @if (erreur()) {
+      <div class="erreur-state">
+        <mat-icon>error_outline</mat-icon>
+        <p>{{ erreur() }}</p>
+      </div>
+    }
+
+    <!-- BILAN -->
+    @if (bilanAffiche && !loading()) {
+
+      @if (modeEdition()) {
+        <div class="edition-banner">
+          <mat-icon>edit</mat-icon>
+          Mode édition actif — modifiez les montants, libellés,
+          ajoutez ou supprimez des lignes
+        </div>
+      }
+
+      <!-- KPIs -->
+      <div class="kpi-row">
+        <div class="kpi-card blue">
+          <mat-icon>account_balance</mat-icon>
+          <div>
+            <span class="kpi-label">Total Actif</span>
+            <span class="kpi-value">{{ formatMontant(totalActif) }}</span>
+          </div>
+        </div>
+        <div class="kpi-card green">
+          <mat-icon>savings</mat-icon>
+          <div>
+            <span class="kpi-label">Total Passif</span>
+            <span class="kpi-value">{{ formatMontant(totalPassif) }}</span>
+          </div>
+        </div>
+        <div class="kpi-card"
+             [class.purple]="resultat >= 0"
+             [class.red]="resultat < 0">
+          <mat-icon>trending_up</mat-icon>
+          <div>
+            <span class="kpi-label">Résultat {{ exercice }}</span>
+            <span class="kpi-value">{{ formatMontant(resultat) }}</span>
+          </div>
+        </div>
+        <div class="kpi-card"
+             [class.green]="equilibre"
+             [class.orange]="!equilibre">
+          <mat-icon>{{ equilibre ? 'check_circle' : 'warning' }}</mat-icon>
+          <div>
+            <span class="kpi-label">Équilibre</span>
+            <span class="kpi-value">
+              {{ equilibre ? '✅ Équilibré' : '⚠️ Déséquilibré' }}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- TABLEAU BILAN -->
+      <div class="bilan-tableau">
+
+        <!-- ══ ACTIF ══════════════════════════════════════ -->
+        <div class="bilan-col">
+          <div class="col-header actif-header">
+            <mat-icon>arrow_downward</mat-icon>
+            ACTIF — EMPLOIS
+          </div>
+
+          <!-- Actif Immobilisé -->
+          <div class="section">
+            <div class="section-title">
+              <mat-icon>home_work</mat-icon>
+              ACTIF IMMOBILISÉ
+              <span class="section-total">
+                {{ formatMontant(bilanAffiche.actif.actifImmobilise.total) }}
+              </span>
+            </div>
+
+            @for (ligne of bilanAffiche.actif.actifImmobilise.lignes;
+              track ligne.compte) {
+              <div class="ligne" [class.ligne-edit]="modeEdition()">
+                @if (modeEdition()) {
+                  <input class="compte-input"
+                         [value]="ligne.compte"
+                         (change)="modifierLigne('actifImmobilise', 'actif',
+                           ligne.compte, 'compte',
+                           $any($event.target).value)" />
+                  <input class="libelle-input"
+                         [value]="ligne.libelle"
+                         (change)="modifierLigne('actifImmobilise', 'actif',
+                           ligne.compte, 'libelle',
+                           $any($event.target).value)" />
+                  <input class="montant-input"
+                         type="number"
+                         [value]="ligne.montant"
+                         (change)="modifierLigne('actifImmobilise', 'actif',
+                           ligne.compte, 'montant',
+                           $any($event.target).value)" />
+                  <button class="del-ligne"
+                          (click)="supprimerLigne('actifImmobilise',
+                            'actif', ligne.compte)">
+                    <mat-icon>remove_circle</mat-icon>
+                  </button>
+                } @else {
+                  <span class="compte">{{ ligne.compte }}</span>
+                  <span class="libelle">{{ ligne.libelle }}</span>
+                  <span class="montant">
+                    {{ formatMontant(ligne.montant) }}
+                  </span>
+                }
+              </div>
+            }
+
+            @if (bilanAffiche.actif.actifImmobilise.lignes.length === 0) {
+              <div class="ligne vide">Aucune immobilisation</div>
+            }
+
+            @if (modeEdition()) {
+              <button class="btn-add-ligne"
+                      (click)="ajouterLigne('actifImmobilise', 'actif')">
+                <mat-icon>add_circle</mat-icon>
+                Ajouter une ligne
+              </button>
+            }
+          </div>
+
+          <!-- Actif Circulant -->
+          <div class="section">
+            <div class="section-title">
+              <mat-icon>sync</mat-icon>
+              ACTIF CIRCULANT
+              <span class="section-total">
+                {{ formatMontant(bilanAffiche.actif.actifCirculant.total) }}
+              </span>
+            </div>
+
+            @for (ligne of bilanAffiche.actif.actifCirculant.lignes;
+              track ligne.compte) {
+              <div class="ligne" [class.ligne-edit]="modeEdition()">
+                @if (modeEdition()) {
+                  <input class="compte-input"
+                         [value]="ligne.compte"
+                         (change)="modifierLigne('actifCirculant', 'actif',
+                           ligne.compte, 'compte',
+                           $any($event.target).value)" />
+                  <input class="libelle-input"
+                         [value]="ligne.libelle"
+                         (change)="modifierLigne('actifCirculant', 'actif',
+                           ligne.compte, 'libelle',
+                           $any($event.target).value)" />
+                  <input class="montant-input"
+                         type="number"
+                         [value]="ligne.montant"
+                         (change)="modifierLigne('actifCirculant', 'actif',
+                           ligne.compte, 'montant',
+                           $any($event.target).value)" />
+                  <button class="del-ligne"
+                          (click)="supprimerLigne('actifCirculant',
+                            'actif', ligne.compte)">
+                    <mat-icon>remove_circle</mat-icon>
+                  </button>
+                } @else {
+                  <span class="compte">{{ ligne.compte }}</span>
+                  <span class="libelle">{{ ligne.libelle }}</span>
+                  <span class="montant">
+                    {{ formatMontant(ligne.montant) }}
+                  </span>
+                }
+              </div>
+            }
+
+            @if (bilanAffiche.actif.actifCirculant.lignes.length === 0) {
+              <div class="ligne vide">Aucun actif circulant</div>
+            }
+
+            @if (modeEdition()) {
+              <button class="btn-add-ligne"
+                      (click)="ajouterLigne('actifCirculant', 'actif')">
+                <mat-icon>add_circle</mat-icon>
+                Ajouter une ligne
+              </button>
+            }
+          </div>
+
+          <!-- Trésorerie Actif -->
+          <div class="section">
+            <div class="section-title">
+              <mat-icon>payments</mat-icon>
+              TRÉSORERIE - ACTIF
+              <span class="section-total">
+                {{ formatMontant(bilanAffiche.actif.tresorerieActif.total) }}
+              </span>
+            </div>
+
+            @for (ligne of bilanAffiche.actif.tresorerieActif.lignes;
+              track ligne.compte) {
+              <div class="ligne" [class.ligne-edit]="modeEdition()">
+                @if (modeEdition()) {
+                  <input class="compte-input"
+                         [value]="ligne.compte"
+                         (change)="modifierLigne('tresorerieActif', 'actif',
+                           ligne.compte, 'compte',
+                           $any($event.target).value)" />
+                  <input class="libelle-input"
+                         [value]="ligne.libelle"
+                         (change)="modifierLigne('tresorerieActif', 'actif',
+                           ligne.compte, 'libelle',
+                           $any($event.target).value)" />
+                  <input class="montant-input"
+                         type="number"
+                         [value]="ligne.montant"
+                         (change)="modifierLigne('tresorerieActif', 'actif',
+                           ligne.compte, 'montant',
+                           $any($event.target).value)" />
+                  <button class="del-ligne"
+                          (click)="supprimerLigne('tresorerieActif',
+                            'actif', ligne.compte)">
+                    <mat-icon>remove_circle</mat-icon>
+                  </button>
+                } @else {
+                  <span class="compte">{{ ligne.compte }}</span>
+                  <span class="libelle">{{ ligne.libelle }}</span>
+                  <span class="montant">
+                    {{ formatMontant(ligne.montant) }}
+                  </span>
+                }
+              </div>
+            }
+
+            @if (bilanAffiche.actif.tresorerieActif.lignes.length === 0) {
+              <div class="ligne vide">Aucune trésorerie actif</div>
+            }
+
+            @if (modeEdition()) {
+              <button class="btn-add-ligne"
+                      (click)="ajouterLigne('tresorerieActif', 'actif')">
+                <mat-icon>add_circle</mat-icon>
+                Ajouter une ligne
+              </button>
+            }
+          </div>
+
+          <!-- Total Actif -->
+          <div class="total-row actif-total">
+            <span>TOTAL ACTIF</span>
+            <span>{{ formatMontant(totalActif) }}</span>
+          </div>
+        </div>
+
+        <!-- ══ PASSIF ═════════════════════════════════════ -->
+        <div class="bilan-col">
+          <div class="col-header passif-header">
+            <mat-icon>arrow_upward</mat-icon>
+            PASSIF — RESSOURCES
+          </div>
+
+          <!-- Financement Permanent -->
+          <div class="section">
+            <div class="section-title">
+              <mat-icon>corporate_fare</mat-icon>
+              FINANCEMENT PERMANENT
+              <span class="section-total">
+                {{ formatMontant(bilanAffiche.passif.financementPermanent.total) }}
+              </span>
+            </div>
+
+            @for (ligne of bilanAffiche.passif.financementPermanent.lignes;
+              track ligne.compte) {
+              <div class="ligne" [class.ligne-edit]="modeEdition()">
+                @if (modeEdition()) {
+                  <input class="compte-input"
+                         [value]="ligne.compte"
+                         (change)="modifierLigne('financementPermanent', 'passif',
+                           ligne.compte, 'compte',
+                           $any($event.target).value)" />
+                  <input class="libelle-input"
+                         [value]="ligne.libelle"
+                         (change)="modifierLigne('financementPermanent', 'passif',
+                           ligne.compte, 'libelle',
+                           $any($event.target).value)" />
+                  <input class="montant-input"
+                         type="number"
+                         [value]="ligne.montant"
+                         (change)="modifierLigne('financementPermanent', 'passif',
+                           ligne.compte, 'montant',
+                           $any($event.target).value)" />
+                  <button class="del-ligne"
+                          (click)="supprimerLigne('financementPermanent',
+                            'passif', ligne.compte)">
+                    <mat-icon>remove_circle</mat-icon>
+                  </button>
+                } @else {
+                  <span class="compte">{{ ligne.compte }}</span>
+                  <span class="libelle">{{ ligne.libelle }}</span>
+                  <span class="montant">
+                    {{ formatMontant(ligne.montant) }}
+                  </span>
+                }
+              </div>
+            }
+
+            @if (bilanAffiche.passif.financementPermanent.lignes.length === 0) {
+              <div class="ligne vide">Aucun financement permanent</div>
+            }
+
+            @if (modeEdition()) {
+              <button class="btn-add-ligne"
+                      (click)="ajouterLigne('financementPermanent', 'passif')">
+                <mat-icon>add_circle</mat-icon>
+                Ajouter une ligne
+              </button>
+            }
+
+            @if (resultat !== 0) {
+              <div class="ligne resultat-ligne">
+                <span class="compte">119</span>
+                <span class="libelle">
+                  Résultat de l'exercice {{ exercice }}
+                </span>
+                <span class="montant"
+                      [class.positif]="resultat >= 0"
+                      [class.negatif]="resultat < 0">
+                  {{ formatMontant(resultat) }}
+                </span>
+              </div>
+            }
+          </div>
+
+          <!-- Passif Circulant -->
+          <div class="section">
+            <div class="section-title">
+              <mat-icon>swap_horiz</mat-icon>
+              PASSIF CIRCULANT
+              <span class="section-total">
+                {{ formatMontant(bilanAffiche.passif.passifCirculant.total) }}
+              </span>
+            </div>
+
+            @for (ligne of bilanAffiche.passif.passifCirculant.lignes;
+              track ligne.compte) {
+              <div class="ligne" [class.ligne-edit]="modeEdition()">
+                @if (modeEdition()) {
+                  <input class="compte-input"
+                         [value]="ligne.compte"
+                         (change)="modifierLigne('passifCirculant', 'passif',
+                           ligne.compte, 'compte',
+                           $any($event.target).value)" />
+                  <input class="libelle-input"
+                         [value]="ligne.libelle"
+                         (change)="modifierLigne('passifCirculant', 'passif',
+                           ligne.compte, 'libelle',
+                           $any($event.target).value)" />
+                  <input class="montant-input"
+                         type="number"
+                         [value]="ligne.montant"
+                         (change)="modifierLigne('passifCirculant', 'passif',
+                           ligne.compte, 'montant',
+                           $any($event.target).value)" />
+                  <button class="del-ligne"
+                          (click)="supprimerLigne('passifCirculant',
+                            'passif', ligne.compte)">
+                    <mat-icon>remove_circle</mat-icon>
+                  </button>
+                } @else {
+                  <span class="compte">{{ ligne.compte }}</span>
+                  <span class="libelle">{{ ligne.libelle }}</span>
+                  <span class="montant">
+                    {{ formatMontant(ligne.montant) }}
+                  </span>
+                }
+              </div>
+            }
+
+            @if (bilanAffiche.passif.passifCirculant.lignes.length === 0) {
+              <div class="ligne vide">Aucun passif circulant</div>
+            }
+
+            @if (modeEdition()) {
+              <button class="btn-add-ligne"
+                      (click)="ajouterLigne('passifCirculant', 'passif')">
+                <mat-icon>add_circle</mat-icon>
+                Ajouter une ligne
+              </button>
+            }
+          </div>
+
+          <!-- Trésorerie Passif -->
+          <div class="section">
+            <div class="section-title">
+              <mat-icon>account_balance</mat-icon>
+              TRÉSORERIE - PASSIF
+              <span class="section-total">
+                {{ formatMontant(bilanAffiche.passif.tresoreriePassif.total) }}
+              </span>
+            </div>
+
+            @for (ligne of bilanAffiche.passif.tresoreriePassif.lignes;
+              track ligne.compte) {
+              <div class="ligne" [class.ligne-edit]="modeEdition()">
+                @if (modeEdition()) {
+                  <input class="compte-input"
+                         [value]="ligne.compte"
+                         (change)="modifierLigne('tresoreriePassif', 'passif',
+                           ligne.compte, 'compte',
+                           $any($event.target).value)" />
+                  <input class="libelle-input"
+                         [value]="ligne.libelle"
+                         (change)="modifierLigne('tresoreriePassif', 'passif',
+                           ligne.compte, 'libelle',
+                           $any($event.target).value)" />
+                  <input class="montant-input"
+                         type="number"
+                         [value]="ligne.montant"
+                         (change)="modifierLigne('tresoreriePassif', 'passif',
+                           ligne.compte, 'montant',
+                           $any($event.target).value)" />
+                  <button class="del-ligne"
+                          (click)="supprimerLigne('tresoreriePassif',
+                            'passif', ligne.compte)">
+                    <mat-icon>remove_circle</mat-icon>
+                  </button>
+                } @else {
+                  <span class="compte">{{ ligne.compte }}</span>
+                  <span class="libelle">{{ ligne.libelle }}</span>
+                  <span class="montant">
+                    {{ formatMontant(ligne.montant) }}
+                  </span>
+                }
+              </div>
+            }
+
+            @if (bilanAffiche.passif.tresoreriePassif.lignes.length === 0) {
+              <div class="ligne vide">Aucune trésorerie passif</div>
+            }
+
+            @if (modeEdition()) {
+              <button class="btn-add-ligne"
+                      (click)="ajouterLigne('tresoreriePassif', 'passif')">
+                <mat-icon>add_circle</mat-icon>
+                Ajouter une ligne
+              </button>
+            }
+          </div>
+
+          <!-- Total Passif -->
+          <div class="total-row passif-total">
+            <span>TOTAL PASSIF</span>
+            <span>{{ formatMontant(totalPassif) }}</span>
+          </div>
+        </div>
+
+      </div>
+
+      @if (!equilibre) {
+        <div class="ecart-warning">
+          <mat-icon>warning</mat-icon>
+          Écart détecté : {{ formatMontant(bilan().ecart) }}
+
+        </div>
+      }
+
+    }
+
+  </main>
+</div>

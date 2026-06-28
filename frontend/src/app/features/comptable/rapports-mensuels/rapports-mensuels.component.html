@@ -1,0 +1,95 @@
+<div class="dash-layout">
+  <app-comptable-sidebar></app-comptable-sidebar>
+
+  <main class="rapports-layout">
+
+    <div class="rapports-content">
+
+      <div class="page-header">
+        <div>
+          <h2>Rapports mensuels</h2>
+          @if (clientCtx.clientActif()) {
+            <span class="client-actif-label">
+              {{ clientCtx.clientActif()!.nomEntreprise }}
+            </span>
+          }
+        </div>
+        <span class="count-badge">{{ rapports().length }}</span>
+      </div>
+
+      @if (!clientCtx.clientActif()) {
+        <div class="state-center">
+          <mat-icon>person_off</mat-icon>
+          <p>Sélectionnez un client</p>
+        </div>
+      }
+
+      @if (clientCtx.clientActif() && loading()) {
+        <div class="state-center">
+          <div class="spinner"></div>
+        </div>
+      }
+
+      @if (clientCtx.clientActif() && !loading() && rapports().length === 0) {
+        <div class="state-center">
+          <mat-icon>description</mat-icon>
+          <p>Aucun rapport pour ce client</p>
+        </div>
+      }
+
+      <div class="rapports-rows">
+        @for (rapport of rapports(); track rapport.id) {
+          <div class="rapport-row" (click)="ouvrirRapport(rapport)">
+
+            <div class="row-pdf-badge">
+              <mat-icon>description</mat-icon>
+              <span>PDF</span>
+            </div>
+
+            <div class="row-info">
+              <span class="row-date">
+                {{ formatDate(rapport.createdAt) }}
+              </span>
+              <span class="row-sub">
+                {{ rapport.nomEntreprise }}
+              </span>
+            </div>
+
+            <div class="row-label">
+              <span class="row-mois">{{ rapport.moisLabel }}</span>
+              <span class="row-sub">Rapport mensuel</span>
+            </div>
+
+            <span class="row-statut">
+              <mat-icon>check_circle</mat-icon>
+              Généré
+            </span>
+
+            <button class="row-download"
+                    (click)="telecharger(rapport, $event)">
+              <mat-icon>download</mat-icon>
+            </button>
+
+          </div>
+        }
+      </div>
+
+    </div>
+
+    <!-- ══ MODAL / PANEL DÉTAIL ══════════════════════════════ -->
+    @if (rapportActif() && iframeUrl()) {
+      <div class="rapport-overlay" (click)="fermerDetail()">
+        <div class="rapport-modal" (click)="$event.stopPropagation()">
+          <div class="modal-header">
+            <span>Rapport — {{ rapportActif()!.moisLabel }}</span>
+            <button class="close-btn" (click)="fermerDetail()">
+              <mat-icon>close</mat-icon>
+            </button>
+          </div>
+          <iframe [src]="iframeUrl()" class="rapport-iframe"></iframe>
+        </div>
+      </div>
+    }
+
+  </main>
+</div>

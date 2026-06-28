@@ -1,0 +1,390 @@
+<div class="tva-layout">
+  <app-comptable-sidebar></app-comptable-sidebar>
+
+  <main class="tva-main">
+
+    <!-- ══ HEADER ══ -->
+    <div class="page-header">
+      <div class="header-left">
+        <div class="header-icon-wrap">
+          <mat-icon>receipt_long</mat-icon>
+        </div>
+        <div>
+          <h1>Déclaration TVA — Maroc</h1>
+          <p class="header-sub">
+            @if (clientCtx.clientActif()) {
+              <strong>{{ clientCtx.clientActif()!.nomEntreprise }}</strong>
+              @if (configClient()) {
+                &nbsp;·&nbsp;
+                <span class="regime-badge">{{ regimeLabel(configClient()!.regime) }}</span>
+              }
+            } @else {
+              Sélectionnez un client dans la barre latérale
+            }
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ KPIs ══ -->
+    @if (dashboard()) {
+      <div class="kpis-row">
+        <div class="kpi">
+          <mat-icon class="kpi-icon icon-blue">people</mat-icon>
+          <div class="kpi-info">
+            <span class="kpi-val">{{ dashboard()!.clientsActifs }}</span>
+            <span class="kpi-lbl">Clients actifs</span>
+          </div>
+        </div>
+        <div class="kpi">
+          <mat-icon class="kpi-icon icon-green">check_circle</mat-icon>
+          <div class="kpi-info">
+            <span class="kpi-val">{{ dashboard()!.declareesCeMois }}</span>
+            <span class="kpi-lbl">Soumises</span>
+          </div>
+        </div>
+        <div class="kpi">
+          <mat-icon class="kpi-icon icon-orange">hourglass_empty</mat-icon>
+          <div class="kpi-info">
+            <span class="kpi-val">{{ dashboard()!.enAttente }}</span>
+            <span class="kpi-lbl">En attente</span>
+          </div>
+        </div>
+        <div class="kpi">
+          <mat-icon class="kpi-icon icon-red">warning</mat-icon>
+          <div class="kpi-info">
+            <span class="kpi-val">{{ dashboard()!.enRetard }}</span>
+            <span class="kpi-lbl">En retard</span>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- ══ PAS DE CLIENT ══ -->
+    @if (!clientCtx.clientActif()) {
+      <div class="empty-main">
+        <mat-icon>person_search</mat-icon>
+        <p>Sélectionnez un client pour gérer ses déclarations TVA</p>
+      </div>
+
+      <!-- ══ CONFIGURER RÉGIME (premier accès) ══ -->
+    } @else if (showConfigRegime()) {
+      <div class="config-regime-wrap">
+        <div class="config-regime-card">
+          <div class="config-regime-icon">
+            <mat-icon>settings</mat-icon>
+          </div>
+          <h2>Configuration TVA du client</h2>
+          <p class="config-regime-desc">
+            Définissez le régime TVA de
+            <strong>{{ clientCtx.clientActif()!.nomEntreprise }}</strong>.
+            Cette information est enregistrée une seule fois et ne sera
+            plus demandée lors des prochaines déclarations.
+          </p>
+
+          <div class="regime-choices">
+            <div class="regime-choice"
+                 [class.selected]="regimeChoisi() === 'MENSUEL'"
+                 (click)="regimeChoisi.set('MENSUEL')">
+              <mat-icon>calendar_view_month</mat-icon>
+              <div>
+                <strong>Mensuel</strong>
+                <span>Déclaration chaque mois, avant le 20</span>
+              </div>
+              @if (regimeChoisi() === 'MENSUEL') {
+                <mat-icon class="check">check_circle</mat-icon>
+              }
+            </div>
+            <div class="regime-choice"
+                 [class.selected]="regimeChoisi() === 'TRIMESTRIEL'"
+                 (click)="regimeChoisi.set('TRIMESTRIEL')">
+              <mat-icon>calendar_view_week</mat-icon>
+              <div>
+                <strong>Trimestriel</strong>
+                <span>Déclaration tous les 3 mois, avant le 20</span>
+              </div>
+              @if (regimeChoisi() === 'TRIMESTRIEL') {
+                <mat-icon class="check">check_circle</mat-icon>
+              }
+            </div>
+          </div>
+
+          <button class="btn-primary" (click)="configurerRegime()">
+            <mat-icon>save</mat-icon>
+            Enregistrer le régime TVA
+          </button>
+        </div>
+      </div>
+
+      <!-- ══ MODULE PRINCIPAL ══ -->
+    } @else {
+      <div class="content-split">
+
+        <!-- ══ LISTE DÉCLARATIONS ══ -->
+        <aside class="list-panel">
+          <div class="list-header">
+            <mat-icon>history</mat-icon>
+            Historique
+          </div>
+
+          @if (loading()) {
+            <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+          }
+
+          @if (declarations().length === 0 && !loading()) {
+            <div class="list-empty">
+              <mat-icon>folder_open</mat-icon>
+              <span>Aucune déclaration</span>
+            </div>
+          }
+
+          @for (d of declarations(); track d.id) {
+            <div class="list-item"
+                 [class.active]="declaration()?.id === d.id"
+                 (click)="selectionner(d)">
+              <div class="list-item-left">
+                <mat-icon class="list-icon">calendar_today</mat-icon>
+                <div>
+                  <span class="list-periode">{{ d.periodeLabel }}</span>
+                  <span class="list-montant"
+                        [class.montant-credit]="(d.creditTvaReporte || 0) > 0">
+                    {{ (d.creditTvaReporte || 0) > 0 ? 'Crédit ' : '' }}
+                    {{ formatMontant(getMontantAffiche(d)) }} DH
+                  </span>
+                </div>
+              </div>
+              <span class="statut-chip" [class]="statutClass(d.statut)">
+                {{ statutLabel(d.statut) }}
+              </span>
+            </div>
+          }
+        </aside>
+
+        <!-- ══ PANNEAU DROIT ══ -->
+        <section class="detail-panel">
+
+          <!-- ── Prochaine période proposée ── -->
+          @if (prochainePeriode() && !declaration()) {
+            <div class="periode-proposee"
+                 [class.retard]="prochainePeriode()!.enRetard">
+
+              <div class="periode-proposee-header">
+                <div class="periode-icon">
+                  <mat-icon>auto_awesome</mat-icon>
+                </div>
+                <div>
+                  <h3>Prochaine période à déclarer</h3>
+                  <p>Calculée automatiquement selon votre historique</p>
+                </div>
+              </div>
+
+              <!-- Période affichée -->
+              <div class="periode-label-big">
+                {{ prochainePeriode()!.periodeLabel }}
+              </div>
+
+              <!-- Alerte retard -->
+              @if (prochainePeriode()!.enRetard) {
+                <div class="alerte-retard">
+                  <mat-icon>warning</mat-icon>
+                  Date limite dépassée — déclaration en retard
+                </div>
+              }
+
+              <!-- Date limite -->
+              <div class="date-limite-info"
+                   [class.urgent]="prochainePeriode()!.enRetard">
+                <mat-icon>event</mat-icon>
+                Date limite de dépôt :
+                <strong>
+                  {{ prochainePeriode()!.dateLimite | date:'dd/MM/yyyy' }}
+                </strong>
+              </div>
+
+              <!-- Dates ajustables -->
+              <div class="dates-ajustables">
+                <div class="dates-label">
+                  <mat-icon>tune</mat-icon>
+                  Période confirmée — ajustez si nécessaire :
+                </div>
+                <div class="dates-grid">
+                  <div class="date-field">
+                    <label>Début de période</label>
+                    <input type="date"
+                           [value]="dateDebutAjustee()"
+                           (change)="onDateDebutChange($any($event.target).value)">
+                  </div>
+                  <div class="date-field">
+                    <label>Fin de période</label>
+                    <input type="date"
+                           [value]="dateFinAjustee()"
+                           (change)="onDateFinChange($any($event.target).value)">
+                  </div>
+                </div>
+                @if (periodeModifiee()) {
+                  <div class="periode-modifiee-warn">
+                    <mat-icon>edit</mat-icon>
+                    Période modifiée — différente de la proposition automatique
+                    <button class="btn-link" (click)="reinitialiserPeriode()">
+                      Rétablir
+                    </button>
+                  </div>
+                }
+              </div>
+
+              <!-- Action principale -->
+              @if (prochainePeriode()!.declarationExistanteId) {
+                <div class="brouillon-existant">
+                  <mat-icon>info</mat-icon>
+                  Un brouillon existe déjà pour cette période
+                </div>
+              }
+
+              <button class="btn-calculer"
+                      [disabled]="loadingCalc()"
+                      (click)="calculer()">
+                @if (loadingCalc()) {
+                  <mat-icon class="spin">refresh</mat-icon>
+                  Calcul en cours...
+                } @else {
+                  <mat-icon>calculate</mat-icon>
+                  Calculer la TVA depuis les factures IA
+                }
+              </button>
+            </div>
+          }
+
+          <!-- ── Résultat déclaration ── -->
+          @if (declaration()) {
+            <div class="result-card">
+
+              <div class="result-header">
+                <div class="result-title">
+                  <h3>{{ declaration()!.periodeLabel }}</h3>
+                  <span class="statut-chip"
+                        [class]="statutClass(declaration()!.statut)">
+                    {{ statutLabel(declaration()!.statut) }}
+                  </span>
+                  @if (estEnRetard(declaration()!.dateLimite)
+                  && declaration()!.statut !== 'SOUMISE'
+                  && declaration()!.statut !== 'VALIDEE') {
+                    <span class="retard-badge">
+                      <mat-icon>warning</mat-icon>En retard
+                    </span>
+                  }
+                </div>
+                <div class="result-actions">
+                  <button class="btn-ghost btn-sm" (click)="declaration.set(null)">
+                    <mat-icon>arrow_back</mat-icon>
+                    Retour
+                  </button>
+                  @if (declaration()!.statut === 'BROUILLON'
+                  || declaration()!.statut === 'EN_RETARD') {
+                    <button class="btn-soumettre" (click)="soumettre()">
+                      <mat-icon>send</mat-icon>
+                      Soumettre la déclaration
+                    </button>
+                  }
+                </div>
+              </div>
+
+              <!-- Table des taux TVA -->
+              <div class="taux-table-wrap">
+                <table class="taux-table">
+                  <thead>
+                  <tr>
+                    <th>Taux TVA</th>
+                    <th>Base HT (achats)</th>
+                    <th class="col-green">TVA déductible</th>
+                    <th>Base HT (ventes)</th>
+                    <th class="col-red">TVA collectée</th>
+                  </tr>
+                  </thead>
+                  <tbody>
+                    @for (l of declaration()!.lignes; track l.taux) {
+                      <tr [class.row-empty]="l.baseHtAchats === 0
+                                          && l.baseHtVentes === 0">
+                        <td class="cell-taux">{{ l.taux }}%</td>
+                        <td class="cell-num">{{ formatMontant(l.baseHtAchats) }}</td>
+                        <td class="cell-num col-green">{{ formatMontant(l.tvaDeductible) }}</td>
+                        <td class="cell-num">{{ formatMontant(l.baseHtVentes) }}</td>
+                        <td class="cell-num col-red">{{ formatMontant(l.tvaCollectee) }}</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+
+              <!-- Totaux -->
+              <div class="totaux-wrap">
+                <div class="totaux-detail">
+                  <div class="total-ligne">
+                    <span>TVA collectée totale</span>
+                    <span class="val-red">
+                      {{ formatMontant(declaration()!.tvaCollecteeTotal) }} DH
+                    </span>
+                  </div>
+                  <div class="total-ligne">
+                    <span>TVA déductible totale</span>
+                    <span class="val-green">
+                      — {{ formatMontant(declaration()!.tvaDeductibleTotal) }} DH
+                    </span>
+                  </div>
+                </div>
+
+                @if ((declaration()!.creditTvaReporte || 0) > 0) {
+                  <div class="tva-finale credit-tva">
+                    <div class="tva-finale-left">
+                      <mat-icon>savings</mat-icon>
+                      <div>
+                        <span class="tva-finale-lbl">Crédit TVA</span>
+                        <span class="tva-finale-sub">
+                          Reportable sur la prochaine période
+                        </span>
+                      </div>
+                    </div>
+                    <div class="tva-finale-montant credit">
+                      {{ formatMontant(declaration()!.creditTvaReporte) }} DH
+                    </div>
+                  </div>
+                } @else {
+                  <div class="tva-finale payer-tva">
+                    <div class="tva-finale-left">
+                      <mat-icon>payments</mat-icon>
+                      <div>
+                        <span class="tva-finale-lbl">TVA nette à payer</span>
+                        <span class="tva-finale-sub">
+                          À verser avant le
+                          {{ declaration()!.dateLimite | date:'dd/MM/yyyy' }}
+                        </span>
+                      </div>
+                    </div>
+                    <div class="tva-finale-montant payer"
+                         [class.urgent]="estEnRetard(declaration()!.dateLimite)">
+                      {{ formatMontant(declaration()!.tvaNette) }} DH
+                    </div>
+                  </div>
+                }
+              </div>
+
+              @if (declaration()!.dateSoumission) {
+                <div class="soumis-info">
+                  <mat-icon>check_circle</mat-icon>
+                  Soumise le
+                  {{ declaration()!.dateSoumission | date:'dd/MM/yyyy à HH:mm' }}
+                </div>
+              }
+            </div>
+          }
+
+          @if (!prochainePeriode() && !declaration() && loadingPeriode()) {
+            <div class="loading-center">
+              <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+              <p>Calcul de la prochaine période...</p>
+            </div>
+          }
+        </section>
+      </div>
+    }
+  </main>
+</div>

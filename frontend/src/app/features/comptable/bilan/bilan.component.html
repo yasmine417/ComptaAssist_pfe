@@ -1,0 +1,267 @@
+<div class="dash-layout">
+  <app-comptable-sidebar></app-comptable-sidebar>
+
+  <main class="main-content">
+    <div class="top-bar">
+      <div>
+        <h1 class="page-title">Analyse de Bilan IA</h1>
+        <p class="page-sub">
+          Uploadez un bilan PDF — ratios et anomalies détectés automatiquement
+        </p>
+      </div>
+    </div>
+
+    <div class="bilan-layout">
+
+      <!-- ── Colonne gauche ─────────────────────────────────── -->
+      <div class="left-panel">
+
+        <!-- Sélection client -->
+        <div class="panel-card">
+          <h3><mat-icon>folder_shared</mat-icon> Sélectionner un client</h3>
+          <div class="clients-list">
+            @for (c of clients(); track c.id) {
+              <div class="client-item"
+                   [class.selected]="selectedClient()?.id === c.id"
+                   (click)="selectClient(c)">
+                <div class="c-avatar">{{ c.nomEntreprise.charAt(0) }}</div>
+                <div class="c-info">
+                  <strong>{{ c.nomEntreprise }}</strong>
+                  <span>{{ c.numeroFiscal }}</span>
+                </div>
+                @if (selectedClient()?.id === c.id) {
+                  <mat-icon class="check">check_circle</mat-icon>
+                }
+              </div>
+            }
+            @if (clients().length === 0) {
+              <p class="no-client">Aucun client assigné</p>
+            }
+          </div>
+        </div>
+
+        <!-- Upload -->
+        @if (selectedClient()) {
+          <div class="panel-card upload-card">
+            <h3><mat-icon>upload_file</mat-icon> Uploader un bilan</h3>
+            <label class="upload-zone" [class.loading]="uploading()">
+              <input type="file" accept=".pdf"
+                     (change)="onFileUpload($event)"
+                     hidden [disabled]="uploading()" />
+              <mat-icon>cloud_upload</mat-icon>
+              @if (uploading()) {
+                <span>Upload en cours...</span>
+                <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+              } @else {
+                <span>Cliquer pour uploader le bilan PDF</span>
+                <small>Format PDF uniquement · Max 50 MB</small>
+              }
+            </label>
+          </div>
+        }
+
+        <!-- Documents disponibles -->
+        @if (documents().length > 0) {
+          <div class="panel-card">
+            <h3>
+              <mat-icon>description</mat-icon>
+              Documents bilans ({{ documents().length }})
+            </h3>
+            @for (doc of documents(); track doc.id) {
+              <div class="doc-row">
+                <mat-icon class="pdf-icon">picture_as_pdf</mat-icon>
+                <div class="doc-info">
+                  <span class="doc-name">{{ doc.nomFichier }}</span>
+                  <span class="doc-date">
+                    {{ doc.dateUpload | date:'dd/MM/yyyy' }}
+                  </span>
+                </div>
+                <button mat-flat-button class="btn-analyse"
+                        (click)="analyser(doc)"
+                        [disabled]="analysing()">
+                  @if (analysing()) {
+                    <mat-spinner diameter="16"></mat-spinner>
+                  } @else {
+                    <mat-icon>psychology</mat-icon>
+                  }
+                  Analyser
+                </button>
+              </div>
+            }
+          </div>
+        }
+
+      </div>
+
+      <!-- ── Colonne droite — Résultats ─────────────────────── -->
+      <div class="right-panel">
+
+        @if (analysing()) {
+
+          <div class="analyse-loading">
+            <mat-icon class="spin-icon">psychology</mat-icon>
+            <h3>Analyse IA en cours...</h3>
+            <p>Python calcule les ratios et détecte les anomalies</p>
+            <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+          </div>
+
+        } @else if (selectedAnalyse()) {
+
+          <!-- En-tête résultats -->
+          <div class="result-header">
+            <mat-icon>analytics</mat-icon>
+            <div>
+              <h2>
+                Résultats — Exercice {{ selectedAnalyse()!.exercice }}
+              </h2>
+              <span>
+                {{ selectedAnalyse()!.createdAt | date:'dd/MM/yyyy HH:mm' }}
+              </span>
+            </div>
+          </div>
+
+          <!-- FRF / BFG / TN -->
+          <div class="section-card">
+            <h3>Équilibre financier PCM</h3>
+            <div class="equilibre-grid">
+              <div class="eq-item"
+                   [class.positive]="(selectedAnalyse()!.frf ?? 0) >= 0"
+                   [class.negative]="(selectedAnalyse()!.frf ?? 0) < 0">
+                <span class="eq-label">FRF</span>
+                <span class="eq-value">
+                  {{ selectedAnalyse()!.frf | number:'1.0-0' }} DH
+                </span>
+                <small>{{ selectedAnalyse()!.interpretationFRF }}</small>
+              </div>
+              <div class="eq-item">
+                <span class="eq-label">BFG</span>
+                <span class="eq-value">
+                  {{ selectedAnalyse()!.bfg | number:'1.0-0' }} DH
+                </span>
+                <small>{{ selectedAnalyse()!.interpretationBFG }}</small>
+              </div>
+              <div class="eq-item"
+                   [class.positive]="(selectedAnalyse()!.tn ?? 0) >= 0"
+                   [class.negative]="(selectedAnalyse()!.tn ?? 0) < 0">
+                <span class="eq-label">TN</span>
+                <span class="eq-value">
+                  {{ selectedAnalyse()!.tn | number:'1.0-0' }} DH
+                </span>
+                <small>{{ selectedAnalyse()!.interpretationTN }}</small>
+              </div>
+            </div>
+          </div>
+
+          <!-- Ratios -->
+          <div class="section-card">
+            <h3>Ratios financiers</h3>
+            <div class="ratios-list">
+              @for (item of getRatiosDisplay(selectedAnalyse()!);
+                track item.nom) {
+                <div class="ratio-row">
+                  <span class="ratio-nom">{{ item.nom }}</span>
+                  <span class="ratio-val">
+                    {{ item.valeur | number:'1.2-4' }}
+                  </span>
+                  <span class="badge"
+                        [class.badge-success]="item.statut === 'BON'"
+                        [class.badge-warning]="item.statut === 'ATTENTION'"
+                        [class.badge-danger]="item.statut === 'CRITIQUE'">
+                    {{ item.statut }}
+                  </span>
+                  <small class="ratio-texte">{{ item.texte }}</small>
+                </div>
+              }
+            </div>
+          </div>
+
+          <!-- Anomalies -->
+          @if (selectedAnalyse()!.anomalies) {
+            <div class="section-card anomalies-card">
+              <h3>⚠️ Anomalies détectées</h3>
+              <p>{{ selectedAnalyse()!.anomalies }}</p>
+            </div>
+          }
+
+          <!-- Points forts -->
+          @if (selectedAnalyse()!.pointsForts) {
+            <div class="section-card points-card">
+              <h3>✅ Points forts</h3>
+              <p>{{ selectedAnalyse()!.pointsForts }}</p>
+            </div>
+          }
+
+          <!-- Conclusion -->
+          @if (selectedAnalyse()!.conclusion) {
+            <div class="section-card conclusion-card">
+              <h3>Conclusion</h3>
+              <p>{{ selectedAnalyse()!.conclusion }}</p>
+            </div>
+          }
+
+          <!-- Historique -->
+          @if (analyses().length > 0) {
+            <div class="section-card">
+              <h3>Historique des analyses</h3>
+              @for (a of analyses(); track a.id) {
+                <div class="history-item"
+                     [class.active]="selectedAnalyse()?.id === a.id"
+                     (click)="selectedAnalyse.set(a)">
+                  <mat-icon>description</mat-icon>
+                  <div>
+                    <span>Exercice {{ a.exercice }}</span>
+                    <small>
+                      {{ a.createdAt | date:'dd/MM/yyyy' }}
+                    </small>
+                  </div>
+                  @if (a.statutTN === 'CRITIQUE') {
+                    <span class="badge-danger">Critique</span>
+                  } @else {
+                    <span class="badge-success">OK</span>
+                  }
+                </div>
+              }
+            </div>
+          }
+
+        } @else {
+
+          <div class="empty-result">
+            <mat-icon>analytics</mat-icon>
+            <h3>Prêt pour l'analyse</h3>
+            <p>
+              Sélectionnez un client, uploadez son bilan PDF,
+              puis cliquez sur "Analyser".
+            </p>
+          </div>
+
+          <!-- Historique même sans analyse sélectionnée -->
+          @if (analyses().length > 0) {
+            <div class="section-card">
+              <h3>Historique des analyses</h3>
+              @for (a of analyses(); track a.id) {
+                <div class="history-item"
+                     (click)="selectedAnalyse.set(a)">
+                  <mat-icon>description</mat-icon>
+                  <div>
+                    <span>Exercice {{ a.exercice }}</span>
+                    <small>
+                      {{ a.createdAt | date:'dd/MM/yyyy' }}
+                    </small>
+                  </div>
+                  @if (a.statutTN === 'CRITIQUE') {
+                    <span class="badge-danger">Critique</span>
+                  } @else {
+                    <span class="badge-success">OK</span>
+                  }
+                </div>
+              }
+            </div>
+          }
+
+        }
+
+      </div>
+    </div>
+  </main>
+</div>

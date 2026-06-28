@@ -1,0 +1,281 @@
+<div class="admin-layout">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <mat-icon>account_balance</mat-icon>
+      <span>Compta<strong>Assist</strong></span>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">Administration</div>
+      <a class="nav-item" routerLink="/admin">
+        <mat-icon>upload_file</mat-icon>
+        <span>Documents de référence</span>
+      </a>
+      <a class="nav-item active" routerLink="/admin/utilisateurs">
+        <mat-icon>manage_accounts</mat-icon>
+        <span>Gestion utilisateurs</span>
+      </a>
+      <a class="nav-item" routerLink="/admin/audit">
+        <mat-icon>history</mat-icon>
+        <span>Logs d'audit</span>
+      </a>
+    </nav>
+    <div class="sidebar-user">
+      <div class="user-avatar admin">
+        <mat-icon>admin_panel_settings</mat-icon>
+      </div>
+      <div class="user-info">
+        <span class="user-name">
+          {{ currentUser()?.prenom }}
+          {{ currentUser()?.nom }}
+        </span>
+        <span class="user-role">Administrateur</span>
+      </div>
+      <button mat-icon-button (click)="logout()">
+        <mat-icon>logout</mat-icon>
+      </button>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main-content">
+
+    <div class="top-bar">
+      <div>
+        <h1 class="page-title">Gestion des utilisateurs</h1>
+        <p class="page-sub">
+          Directeurs, comptables et comptes en attente
+        </p>
+      </div>
+      <button mat-flat-button class="btn-primary"
+              (click)="showForm.set(!showForm())">
+        <mat-icon>person_add</mat-icon>
+        Créer un directeur
+      </button>
+    </div>
+
+    <!-- FORMULAIRE CRÉATION DIRECTEUR -->
+    @if (showForm()) {
+      <div class="form-card">
+        <h3>
+          <mat-icon>person_add</mat-icon>
+          Nouveau directeur
+        </h3>
+        <form [formGroup]="form"
+              (ngSubmit)="creerDirecteur()"
+              class="form-grid">
+          <mat-form-field appearance="outline">
+            <mat-label>Prénom *</mat-label>
+            <input matInput formControlName="prenom"
+                   placeholder="Mohammed" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Nom *</mat-label>
+            <input matInput formControlName="nom"
+                   placeholder="Alaoui" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline"
+                          class="full-width">
+            <mat-label>Email *</mat-label>
+            <input matInput type="email"
+                   formControlName="email"
+                   placeholder="directeur@cabinet.ma" />
+            <mat-hint>
+              Les identifiants seront envoyés par email
+            </mat-hint>
+          </mat-form-field>
+
+          <div class="form-actions">
+            <button mat-button type="button"
+                    (click)="showForm.set(false)">
+              Annuler
+            </button>
+            <button mat-flat-button type="submit"
+                    class="btn-primary"
+                    [disabled]="form.invalid || loading()">
+              <mat-icon>send</mat-icon>
+              Créer et envoyer email
+            </button>
+          </div>
+        </form>
+      </div>
+    }
+
+    <!-- COMPTEURS -->
+    <div class="counters-row">
+      <div class="counter blue"
+           (click)="activeTab.set('directeurs')"
+           [class.active]="activeTab() === 'directeurs'">
+        <mat-icon>business</mat-icon>
+        <div>
+          <span class="count">{{ directeurs().length }}</span>
+          <span class="lbl">Directeurs</span>
+        </div>
+      </div>
+      <div class="counter orange"
+           (click)="activeTab.set('attente')"
+           [class.active]="activeTab() === 'attente'">
+        <mat-icon>hourglass_empty</mat-icon>
+        <div>
+          <span class="count">{{ enAttente().length }}</span>
+          <span class="lbl">En attente MDP</span>
+        </div>
+      </div>
+      <div class="counter purple"
+           (click)="activeTab.set('tous')"
+           [class.active]="activeTab() === 'tous'">
+        <mat-icon>people</mat-icon>
+        <div>
+          <span class="count">{{ tousUsers().length }}</span>
+          <span class="lbl">Total utilisateurs</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB : DIRECTEURS -->
+    @if (activeTab() === 'directeurs') {
+      <div class="section-card">
+        <h2>Directeurs de cabinets</h2>
+        @if (directeurs().length === 0) {
+          <div class="empty-state">
+            <mat-icon>business</mat-icon>
+            <p>Aucun directeur créé</p>
+          </div>
+        } @else {
+          <div class="users-list">
+            @for (u of directeurs(); track u.id) {
+              <div class="user-row">
+                <div class="user-avatar-sm green">
+                  {{ u.prenom.charAt(0) }}{{ u.nom.charAt(0) }}
+                </div>
+                <div class="user-info">
+                  <strong>{{ u.prenom }} {{ u.nom }}</strong>
+                  <span>{{ u.email }}</span>
+                </div>
+                <span class="badge-role directeur">
+                  DIRECTEUR
+                </span>
+                <span [class]="getStatutClass(u.statut)">
+                  {{ u.statut }}
+                </span>
+                @if (u.actif) {
+                  <button mat-icon-button color="warn"
+                          matTooltip="Désactiver"
+                          (click)="desactiver(u)">
+                    <mat-icon>person_off</mat-icon>
+                  </button>
+                } @else {
+                  <button mat-icon-button
+                          matTooltip="Réactiver"
+                          style="color:#22c55e"
+                          (click)="reactiver(u)">
+                    <mat-icon>person</mat-icon>
+                  </button>
+                }
+              </div>
+            }
+          </div>
+        }
+      </div>
+    }
+
+    <!-- TAB : EN ATTENTE -->
+    @if (activeTab() === 'attente') {
+      <div class="section-card">
+        <h2>
+          ⏳ Comptes en attente de mot de passe
+          ({{ enAttente().length }})
+        </h2>
+        <p class="section-desc">
+          Ces comptables ont été créés par leur directeur
+          mais n'ont pas encore reçu leurs identifiants.
+          Cliquez "Générer MDP" pour envoyer l'email.
+        </p>
+
+        @if (enAttente().length === 0) {
+          <div class="empty-state">
+            <mat-icon>check_circle</mat-icon>
+            <p>Tous les comptes ont un mot de passe ✅</p>
+          </div>
+        } @else {
+          <div class="users-list">
+            @for (u of enAttente(); track u.id) {
+              <div class="user-row highlight">
+                <div class="user-avatar-sm orange">
+                  {{ u.prenom.charAt(0) }}{{ u.nom.charAt(0) }}
+                </div>
+                <div class="user-info">
+                  <strong>{{ u.prenom }} {{ u.nom }}</strong>
+                  <span>{{ u.email }}</span>
+                </div>
+                <span class="badge-role comptable">
+                  COMPTABLE
+                </span>
+                <span class="badge-warning">EN_ATTENTE</span>
+                <button mat-flat-button
+                        class="btn-generate"
+                        (click)="genererMdp(u)"
+                        [disabled]="generatingId() === u.id">
+                  @if (generatingId() === u.id) {
+                    <mat-spinner diameter="16"></mat-spinner>
+                    Envoi...
+                  } @else {
+                    <mat-icon>key</mat-icon>
+                    Générer MDP
+                  }
+                </button>
+              </div>
+            }
+          </div>
+        }
+      </div>
+    }
+
+    <!-- TAB : TOUS -->
+    @if (activeTab() === 'tous') {
+      <div class="section-card">
+        <h2>Tous les utilisateurs</h2>
+        <div class="users-list">
+          @for (u of tousUsers(); track u.id) {
+            <div class="user-row">
+              <div class="user-avatar-sm"
+                   [class]="u.role === 'DIRECTEUR'
+                     ? 'green' : 'purple'">
+                {{ u.prenom.charAt(0) }}{{ u.nom.charAt(0) }}
+              </div>
+              <div class="user-info">
+                <strong>{{ u.prenom }} {{ u.nom }}</strong>
+                <span>{{ u.email }}</span>
+              </div>
+              <span [class]="'badge-role '
+                + u.role.toLowerCase()">
+                {{ u.role }}
+              </span>
+              <span [class]="getStatutClass(u.statut)">
+                {{ u.statut }}
+              </span>
+              @if (u.actif) {
+                <button mat-icon-button color="warn"
+                        matTooltip="Désactiver"
+                        (click)="desactiver(u)">
+                  <mat-icon>person_off</mat-icon>
+                </button>
+              } @else {
+                <button mat-icon-button
+                        matTooltip="Réactiver"
+                        style="color:#22c55e"
+                        (click)="reactiver(u)">
+                  <mat-icon>person</mat-icon>
+                </button>
+              }
+            </div>
+          }
+        </div>
+      </div>
+    }
+
+  </main>
+</div>

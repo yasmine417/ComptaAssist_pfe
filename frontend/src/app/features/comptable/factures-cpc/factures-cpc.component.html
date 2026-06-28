@@ -1,0 +1,973 @@
+<div class="factures-layout">
+
+  <app-comptable-sidebar></app-comptable-sidebar>
+
+  <!-- ═══════════════════════ LISTE ═══════════════════════ -->
+  <main class="main-content"
+        [class.with-detail]="factureSelectionnee()">
+
+    <div class="page-header">
+      <h1 class="page-title">
+        <mat-icon>receipt_long</mat-icon>
+        Factures en traitement
+        <span class="count-badge">
+          {{ facturesFiltrees.length }}
+        </span>
+      </h1>
+      <div class="header-actions">
+        <div class="search-box">
+          <mat-icon>search</mat-icon>
+          <input type="text"
+                 placeholder="Rechercher..."
+                 [value]="recherche()"
+                 (input)="recherche.set($any($event.target).value)" />
+        </div>
+        <button mat-stroked-button (click)="ouvrirModal()">
+          <mat-icon>link</mat-icon>
+          Lien client
+        </button>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs-container">
+      @for (tab of tabs; track tab.key) {
+        <button class="tab-btn"
+                [class.active]="tabActif() === tab.key"
+                [style.--tab-color]="tab.color"
+                (click)="tabActif.set(tab.key)">
+          <span class="tab-dot" [style.background]="tab.color"></span>
+          {{ tab.label }}
+          <span class="tab-count">{{ countTab(tab.key) }}</span>
+        </button>
+      }
+    </div>
+
+    @if (loading()) {
+      <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+    }
+
+    <div class="table-container">
+      <table class="factures-table">
+        <thead>
+        <tr>
+          <th></th>
+          <th>DATE</th>
+          <th>TIERS</th>
+          <th>TYPE</th>
+          <th>ÉCHÉANCE</th>
+          <th>N° FACTURE</th>
+          <th>MONTANT TTC</th>
+          <th>STATUT</th>
+          <th>ACTIONS</th>
+        </tr>
+        </thead>
+        <tbody>
+          @if (facturesFiltrees.length === 0) {
+            <tr>
+              <td colspan="9" class="empty-state">
+                <mat-icon>receipt</mat-icon>
+                <p>Aucune facture trouvée</p>
+              </td>
+            </tr>
+          }
+          @for (f of facturesFiltrees; track f.id) {
+            <tr class="facture-row"
+                [class.selected]="factureSelectionnee()?.id === f.id"
+                [class.invalide]="!f.valide"
+                (click)="selectionner(f)">
+              <td>
+                <span class="statut-dot" [class]="getStatutClass(f.statut)"></span>
+              </td>
+              <td>{{ f.dateFacture ? (f.dateFacture | date:'dd/MM/yy') : '—' }}</td>
+              <td class="fournisseur-cell">
+                <!-- Afficher émetteur et client selon le sens -->
+                <div class="tiers-cell">
+                  <span class="tiers-principal"
+                        [class.text-warning]="!f.valide">
+                    {{ estVente(f) ? f.fournisseur : f.fournisseur || '—' }}
+                  </span>
+                  @if (f.client && f.client !== f.fournisseur) {
+                    <span class="tiers-secondaire">
+                      → {{ f.client }}
+                    </span>
+                  }
+                </div>
+              </td>
+              <td>
+                <span class="type-op-badge"
+                      [class.type-vente]="estVente(f)"
+                      [class.type-achat]="!estVente(f)">
+                  <mat-icon>{{ estVente(f) ? 'arrow_downward' : 'arrow_upward' }}</mat-icon>
+                  {{ estVente(f) ? 'Vente' : 'Achat' }}
+                </span>
+              </td>
+              <td>
+                @if (f.echeance) {
+                  <span [class.text-danger]="isEchue(f.echeance)">
+                    {{ f.echeance | date:'dd/MM/yy' }}
+                  </span>
+                } @else { <span>—</span> }
+              </td>
+              <td class="numero-cell">
+                @if (!f.valide) {
+                  <mat-icon class="warn-icon" matTooltip="Incohérence détectée">warning</mat-icon>
+                }
+                {{ f.numeroFacture || '—' }}
+              </td>
+              <td class="montant-cell">
+                {{ formatMontant(f.montantTtc, f.devise) }}
+              </td>
+              <td>
+                <span class="badge" [class]="getStatutClass(f.statut)">
+                  {{ getStatutLabel(f.statut) }}
+                </span>
+              </td>
+              <td class="actions-cell" (click)="$event.stopPropagation()">
+                <button mat-icon-button matTooltip="Enregistrer"
+                        (click)="changerStatut(f, 'ENREGISTRE')">
+                  <mat-icon>save</mat-icon>
+                </button>
+                <button mat-icon-button matTooltip="Approuver"
+                        style="color:#22c55e"
+                        (click)="changerStatut(f, 'APPROUVE')">
+                  <mat-icon>check_circle</mat-icon>
+                </button>
+                <button mat-icon-button matTooltip="Rejeter" color="warn"
+                        (click)="changerStatut(f, 'REJETE')">
+                  <mat-icon>cancel</mat-icon>
+                </button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </main>
+
+  <!-- ═══════════════════════ PANNEAU DÉTAIL ═══════════════════════ -->
+  @if (factureSelectionnee()) {
+    <aside class="detail-panel">
+
+      <!-- Header actions -->
+      <div class="detail-header">
+        <div class="detail-title">
+          <span class="badge" [class]="getStatutClass(factureSelectionnee()!.statut)">
+            {{ getStatutLabel(factureSelectionnee()!.statut) }}
+          </span>
+          <!-- Badge VENTE / ACHAT -->
+          <span class="sens-badge"
+                [class.sens-vente]="estVente(factureSelectionnee()!)"
+                [class.sens-achat]="!estVente(factureSelectionnee()!)">
+            <mat-icon>{{ estVente(factureSelectionnee()!) ? 'trending_up' : 'trending_down' }}</mat-icon>
+            {{ estVente(factureSelectionnee()!) ? 'VENTE' : 'ACHAT' }}
+          </span>
+          <h2>{{ factureSelectionnee()!.numeroFacture || 'Facture' }}</h2>
+        </div>
+
+        <div class="detail-actions">
+          @if (factureSelectionnee()!.statut === 'NOUVEAU') {
+            <button mat-stroked-button
+                    (click)="changerStatut(factureSelectionnee()!, 'ENREGISTRE')">
+              <mat-icon>save</mat-icon> Enregistrer
+            </button>
+            <button mat-stroked-button color="warn"
+                    (click)="changerStatut(factureSelectionnee()!, 'REJETE')">
+              Rejeter
+            </button>
+          }
+
+          @if (factureSelectionnee()!.statut === 'ENREGISTRE') {
+            <button mat-stroked-button
+                    (click)="ouvrirModification()"
+                    matTooltip="Corriger l'écriture IA">
+              <mat-icon>edit</mat-icon> Modifier
+            </button>
+            <button mat-flat-button
+                    style="background:#22c55e; color:white"
+                    (click)="changerStatut(factureSelectionnee()!, 'APPROUVE')">
+              <mat-icon>check_circle</mat-icon> Approuver
+            </button>
+            <button mat-stroked-button color="warn"
+                    (click)="changerStatut(factureSelectionnee()!, 'REJETE')">
+              Rejeter
+            </button>
+          }
+
+          @if (factureSelectionnee()!.statut === 'APPROUVE'
+          || factureSelectionnee()!.statut === 'PAIEMENT_PARTIEL') {
+            <button mat-flat-button
+                    style="background:#6366f1; color:white"
+                    (click)="ouvrirPaiement()"
+                    matTooltip="Rapprochement bancaire — virement reçu">
+              <mat-icon>payments</mat-icon>
+              {{ estVente(factureSelectionnee()!) ? 'Virement reçu' : 'Paiement effectué' }}
+            </button>
+          }
+
+          @if (factureSelectionnee()!.statut !== 'NOUVEAU'
+          && factureSelectionnee()!.statut !== 'REJETE') {
+            <button mat-icon-button matTooltip="Exporter CSV" (click)="exporterCsv()">
+              <mat-icon>file_download</mat-icon>
+            </button>
+            <button mat-icon-button matTooltip="Exporter Excel" (click)="exporterExcel()">
+              <mat-icon>grid_on</mat-icon>
+            </button>
+          }
+
+          <button mat-icon-button matTooltip="Fermer" (click)="fermerDetail()">
+            <mat-icon>close</mat-icon>
+          </button>
+        </div>
+      </div>
+
+      <!-- Bannière confirmation immobilisation/charge -->
+      @if (factureSelectionnee()!.confirmationRequise) {
+        <div class="confirmation-banner">
+          <div class="confirmation-banner-icon">
+            <mat-icon>help_outline</mat-icon>
+          </div>
+          <div class="confirmation-banner-content">
+            <strong>Classification requise</strong>
+            <p>{{ factureSelectionnee()!.confirmationMessage ||
+            'Cet achat semble être une immobilisation. Confirmez après avoir consulté la facture :' }}</p>
+            <div class="confirmation-choices-inline">
+              <button class="choice-btn choice-immo"
+                      [disabled]="reclassementEnCours()"
+                      (click)="confirmerClassification('IMMOBILISATION')">
+                <mat-icon>account_balance</mat-icon>
+                <div class="choice-content">
+                  <strong>Immobilisation</strong>
+                  <span>{{ factureSelectionnee()!.confirmationOptionALib || 'Bilan — pas dans le CPC' }}</span>
+                </div>
+              </button>
+              <button class="choice-btn choice-charge"
+                      [disabled]="reclassementEnCours()"
+                      (click)="confirmerClassification('CHARGE')">
+                <mat-icon>receipt_long</mat-icon>
+                <div class="choice-content">
+                  <strong>Charge</strong>
+                  <span>{{ factureSelectionnee()!.confirmationOptionBLib || 'CPC — impact résultat' }}</span>
+                </div>
+              </button>
+            </div>
+            @if (reclassementEnCours()) {
+              <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+            }
+          </div>
+        </div>
+      }
+
+      <div class="detail-body">
+
+        <!-- PDF gauche -->
+        <div class="pdf-side">
+          @if (loadingDetail()) {
+            <div class="pdf-loading">
+              <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+              <p>Chargement...</p>
+            </div>
+          } @else if (urlPdfSafe()) {
+            <iframe [src]="urlPdfSafe()!" title="Facture PDF" class="pdf-iframe"></iframe>
+          } @else {
+            <div class="pdf-placeholder">
+              <mat-icon>picture_as_pdf</mat-icon>
+              <p>Aperçu non disponible</p>
+              <span>Facture sans prévisualisation</span>
+            </div>
+          }
+        </div>
+
+        <!-- Données droite -->
+        <div class="data-side">
+
+          <!-- Montant principal -->
+          <div class="montant-principal"
+               [class.montant-vente]="estVente(factureSelectionnee()!)"
+               [class.montant-achat]="!estVente(factureSelectionnee()!)">
+            <div class="fournisseur-avatar">
+              {{ getAvatarLetter(factureSelectionnee()!) }}
+            </div>
+            <div class="montant-info">
+              <div class="montant-ttc">
+                {{ formatMontant(factureSelectionnee()!.montantTtc, factureSelectionnee()!.devise) }}
+                <span class="ttc-label">TTC</span>
+              </div>
+              <div class="fournisseur-nom">
+                {{ estVente(factureSelectionnee()!)
+                ? (factureSelectionnee()!.client || factureSelectionnee()!.fournisseur || '—')
+                : (factureSelectionnee()!.fournisseur || '—') }}
+              </div>
+              <div class="sens-label">
+                {{ estVente(factureSelectionnee()!) ? '↑ Produit à encaisser' : '↓ Charge à payer' }}
+              </div>
+            </div>
+            <div class="echeance-info">
+              <span class="label">ÉCHÉANCE</span>
+              <span class="value" [class.text-danger]="isEchue(factureSelectionnee()!.echeance)">
+                {{ factureSelectionnee()!.echeance
+                ? (factureSelectionnee()!.echeance | date:'dd MMM yyyy')
+                : '—' }}
+              </span>
+            </div>
+          </div>
+
+          <!-- Bandeau PAYÉE -->
+          @if (factureSelectionnee()!.statut === 'PAYE') {
+            <div class="paye-banner">
+              <mat-icon>check_circle</mat-icon>
+              <div class="paye-info">
+                <strong>{{ estVente(factureSelectionnee()!) ? 'Encaissement confirmé ✓' : 'Paiement confirmé ✓' }}</strong>
+                <span>
+                  {{ formatMontant(factureSelectionnee()!.montantPaye, factureSelectionnee()!.devise) }}
+                  le {{ factureSelectionnee()!.datePaiement ? (factureSelectionnee()!.datePaiement | date:'dd/MM/yyyy') : '—' }}
+                </span>
+                @if (factureSelectionnee()!.referenceVirement) {
+                  <span class="paye-ref">Réf : {{ factureSelectionnee()!.referenceVirement }}</span>
+                }
+              </div>
+            </div>
+          }
+
+          <!-- Bandeau PAIEMENT PARTIEL -->
+          @if (factureSelectionnee()!.statut === 'PAIEMENT_PARTIEL') {
+            <div class="partiel-banner">
+              <mat-icon>warning</mat-icon>
+              <div>
+                <strong>{{ estVente(factureSelectionnee()!) ? 'Encaissement partiel' : 'Paiement partiel' }}</strong>
+                <span>
+                  Reçu : {{ formatMontant(factureSelectionnee()!.montantPaye, factureSelectionnee()!.devise) }}
+                  — Reste : <strong>{{ formatMontant(factureSelectionnee()!.resteAPayer, factureSelectionnee()!.devise) }}</strong>
+                </span>
+              </div>
+            </div>
+          }
+
+          <div class="data-scroll">
+
+            <!-- Tiers -->
+            <div class="detail-section">
+              <h3 class="section-title">
+                <mat-icon>business</mat-icon>
+                {{ estVente(factureSelectionnee()!) ? 'Émetteur & Destinataire' : 'Fournisseur' }}
+              </h3>
+              <div class="fields-grid">
+                <div class="field">
+                  <label>{{ estVente(factureSelectionnee()!) ? 'Émetteur' : 'Fournisseur' }}</label>
+                  <span>{{ factureSelectionnee()!.fournisseur || '—' }}</span>
+                </div>
+                @if (factureSelectionnee()!.client) {
+                  <div class="field">
+                    <label>Client</label>
+                    <span>{{ factureSelectionnee()!.client }}</span>
+                  </div>
+                }
+                @if (factureSelectionnee()!.ice) {
+                  <div class="field">
+                    <label>ICE</label>
+                    <span class="mono">{{ factureSelectionnee()!.ice }}</span>
+                  </div>
+                }
+                @if (factureSelectionnee()!.ifFournisseur) {
+                  <div class="field">
+                    <label>Identifiant Fiscal</label>
+                    <span class="mono">{{ factureSelectionnee()!.ifFournisseur }}</span>
+                  </div>
+                }
+                @if (factureSelectionnee()!.rc) {
+                  <div class="field">
+                    <label>RC</label>
+                    <span class="mono">{{ factureSelectionnee()!.rc }}</span>
+                  </div>
+                }
+                @if (factureSelectionnee()!.siret) {
+                  <div class="field">
+                    <label>SIRET</label>
+                    <span class="mono">{{ factureSelectionnee()!.siret }}</span>
+                  </div>
+                }
+              </div>
+            </div>
+
+            <!-- Données Facture -->
+            <div class="detail-section">
+              <h3 class="section-title">
+                <mat-icon>receipt</mat-icon>
+                Données Facture
+              </h3>
+              <div class="fields-grid fields-grid-3">
+                <div class="field">
+                  <label>Date émission</label>
+                  <span>{{ factureSelectionnee()!.dateFacture ? (factureSelectionnee()!.dateFacture | date:'dd/MM/yyyy') : '—' }}</span>
+                </div>
+                <div class="field">
+                  <label>Échéance</label>
+                  <span [class.text-danger]="isEchue(factureSelectionnee()!.echeance)">
+                    {{ factureSelectionnee()!.echeance ? (factureSelectionnee()!.echeance | date:'dd/MM/yyyy') : '—' }}
+                  </span>
+                </div>
+                <div class="field">
+                  <label>Numérotation</label>
+                  <span class="mono">{{ factureSelectionnee()!.numeroFacture || '—' }}</span>
+                </div>
+                <div class="field">
+                  <label>Montant HT</label>
+                  <span class="montant">{{ factureSelectionnee()!.montantHt | number:'1.2-2' }}</span>
+                </div>
+                <div class="field">
+                  <label>TVA ({{ factureSelectionnee()!.tvaTaux }}%)</label>
+                  <span class="montant">{{ factureSelectionnee()!.montantTva | number:'1.2-2' }}</span>
+                </div>
+                <div class="field">
+                  <label>Montant TTC</label>
+                  <span class="montant" style="font-size:15px; color:#6366f1">
+                    {{ factureSelectionnee()!.montantTtc | number:'1.2-2' }}
+                  </span>
+                </div>
+                <div class="field">
+                  <label>Devise</label>
+                  <span>{{ factureSelectionnee()!.devise || 'MAD' }}</span>
+                </div>
+                <div class="field">
+                  <label>Pays</label>
+                  <span>{{ factureSelectionnee()!.pays || 'MA' }}</span>
+                </div>
+                @if (factureSelectionnee()!.remise && factureSelectionnee()!.remise! > 0) {
+                  <div class="field">
+                    <label>Remise</label>
+                    <span class="montant text-danger">-{{ factureSelectionnee()!.remise | number:'1.2-2' }}</span>
+                  </div>
+                }
+                @if (fraisPortAffiche > 0) {
+                  <div class="field">
+                    <label>Port HT</label>
+                    <span class="montant">{{ fraisPortAffiche | number:'1.2-2' }}</span>
+                  </div>
+                }
+              </div>
+            </div>
+
+            <!-- Imputation comptable -->
+            <div class="detail-section">
+              <h3 class="section-title">
+                <mat-icon>account_tree</mat-icon>
+                Imputation comptable — Journal
+                <span class="journal-chip">
+                  {{ factureSelectionnee()!.journal || (estVente(factureSelectionnee()!) ? 'VE' : 'AC') }}
+                </span>
+              </h3>
+
+              @if (factureSelectionnee()!.alertes?.length) {
+                <div class="alertes-box">
+                  @for (a of factureSelectionnee()!.alertes!; track a) {
+                    <div class="alerte-item"><mat-icon>warning</mat-icon>{{ a }}</div>
+                  }
+                </div>
+              }
+
+              @if (factureSelectionnee()!.warnings?.length) {
+                <div class="warnings-box">
+                  @for (w of factureSelectionnee()!.warnings!; track w) {
+                    <div class="warning-item"><mat-icon>info</mat-icon>{{ w }}</div>
+                  }
+                </div>
+              }
+
+              <!-- Schéma écriture attendue -->
+              <!-- ══════════════════════════════════════════════════════════════ -->
+              <!-- REMPLACER le bloc "schema-ecriture" dans le template HTML     -->
+              <!-- par celui-ci — affiche les vraies valeurs des écritures       -->
+              <!-- ══════════════════════════════════════════════════════════════ -->
+
+              <!-- Schéma écriture — dynamique basé sur les vraies écritures -->
+              <div class="schema-ecriture">
+                @for (s of schemaEcritures; track s.compte) {
+                  <div class="schema-row" [class]="s.classe">
+                    <span class="schema-compte">{{ s.compte }}</span>
+                    <span class="schema-lib">{{ s.libelle }}</span>
+                    <span class="schema-sens">{{ s.sens }}</span>
+                  </div>
+                }
+                @if (!schemaEcritures.length) {
+                  @if (estVente(factureSelectionnee()!)) {
+                    <div class="schema-row schema-debit">
+                      <span class="schema-compte">3421</span>
+                      <span class="schema-lib">Clients (TTC)</span>
+                      <span class="schema-sens">DÉBIT</span>
+                    </div>
+                    <div class="schema-row schema-credit">
+                      <span class="schema-compte">7xxx</span>
+                      <span class="schema-lib">Ventes / Produits (HT)</span>
+                      <span class="schema-sens">CRÉDIT</span>
+                    </div>
+                    <div class="schema-row schema-credit">
+                      <span class="schema-compte">4455</span>
+                      <span class="schema-lib">TVA facturée (TVA)</span>
+                      <span class="schema-sens">CRÉDIT</span>
+                    </div>
+                  } @else {
+                    <div class="schema-row schema-debit">
+                      <span class="schema-compte">6xxx</span>
+                      <span class="schema-lib">Charge (HT)</span>
+                      <span class="schema-sens">DÉBIT</span>
+                    </div>
+                    <div class="schema-row schema-debit">
+                      <span class="schema-compte">3455</span>
+                      <span class="schema-lib">TVA récupérable (TVA)</span>
+                      <span class="schema-sens">DÉBIT</span>
+                    </div>
+                    <div class="schema-row schema-credit">
+                      <span class="schema-compte">4411</span>
+                      <span class="schema-lib">Fournisseurs (TTC)</span>
+                      <span class="schema-sens">CRÉDIT</span>
+                    </div>
+                  }
+                }
+              </div>
+
+
+
+
+
+
+
+              <!-- Table des écritures réelles -->
+              <table class="ecritures-table">
+                <thead>
+                <tr>
+                  <th>COMPTE</th>
+                  <th>LIBELLÉ</th>
+                  <th>DÉBIT</th>
+                  <th>CRÉDIT</th>
+                </tr>
+                </thead>
+                <tbody>
+                  @for (e of ecrituresTypees; track e.num) {
+                    <tr [class.ligne-debit]="e.debit > 0"
+                        [class.ligne-credit]="e.credit > 0">
+                      <td class="compte-cell">
+                        <span class="compte-num mono">{{ e.compte }}</span>
+                        <span class="compte-desc">{{ e.desc }}</span>
+                      </td>
+                      <td>{{ e.libelle }}</td>
+                      <td class="montant-cell text-debit">
+                        @if (e.debit > 0) { {{ e.debit | number:'1.2-2' }} }
+                      </td>
+                      <td class="montant-cell text-credit">
+                        @if (e.credit > 0) { {{ e.credit | number:'1.2-2' }} }
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+
+              <div class="equilibre-info"
+                   [class.equilibre-ok]="factureSelectionnee()!.ecritureEquilibree"
+                   [class.equilibre-ko]="!factureSelectionnee()!.ecritureEquilibree">
+                <mat-icon>{{ factureSelectionnee()!.ecritureEquilibree ? 'check_circle' : 'error' }}</mat-icon>
+                Écriture {{ factureSelectionnee()!.ecritureEquilibree ? 'équilibrée ✓' : 'déséquilibrée !' }}
+              </div>
+
+              <div class="meta-row">
+                <div class="confiance-bar">
+                  <span>Confiance :</span>
+                  <div class="bar-wrap">
+                    <div class="bar-fill"
+                         [style.width.%]="confianceAffichee * 100"
+                         [class.bar-good]="confianceAffichee >= 0.7"
+                         [class.bar-warn]="confianceAffichee < 0.7">
+                    </div>
+                  </div>
+                  <span class="conf-val">{{ (confianceAffichee * 100) | number:'1.0-0' }}%</span>
+                </div>
+                <div class="regle-info">
+                  <mat-icon>functions</mat-icon>
+                  Règle : {{ regleLabel }}
+                  @if (factureSelectionnee()!.ecartCoherence && factureSelectionnee()!.ecartCoherence! > 0) {
+                    <span class="ecart-badge">écart {{ factureSelectionnee()!.ecartCoherence | number:'1.2-2' }}</span>
+                  }
+                </div>
+              </div>
+            </div>
+
+            <!-- Lignes de facture -->
+            @if (itemsTypees.length > 0) {
+              <div class="detail-section">
+                <h3 class="section-title">
+                  <mat-icon>list</mat-icon>
+                  Lignes de facture
+                </h3>
+                <table class="items-table">
+                  <thead>
+                  <tr>
+                    <th>Description</th>
+                    <th>Qté</th>
+                    <th>Prix HT</th>
+                    <th>TVA%</th>
+                    <th>Total HT</th>
+                  </tr>
+                  </thead>
+                  <tbody>
+                    @for (item of itemsTypees; track item.description) {
+                      <tr>
+                        <td>{{ item.description }}</td>
+                        <td class="center">{{ item.quantite }}</td>
+                        <td class="montant-cell">{{ item.prixUnitaire | number:'1.2-2' }}</td>
+                        <td class="center">{{ item.tvaLigne }}%</td>
+                        <td class="montant-cell">{{ item.totalLigneHt | number:'1.2-2' }}</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            }
+
+            <!-- CPC -->
+            @if (cpcData && cpcResultats) {
+              <div class="detail-section">
+                <h3 class="section-title">
+                  <mat-icon>bar_chart</mat-icon>
+                  Compte de Produits et Charges (CPC)
+                  <!-- ← AJOUTER CE BOUTON -->
+                  @if (factureSelectionnee()!.statut === 'ENREGISTRE') {
+                    <button mat-icon-button
+                            style="margin-left:auto; color:#6366f1"
+                            matTooltip="Modifier le CPC"
+                            (click)="ouvrirModificationCpc()">
+                      <mat-icon>edit</mat-icon>
+                    </button>
+                  }
+                </h3>
+
+                <div class="cpc-resultats">
+                  <div class="cpc-result-row"
+                       [class.positif]="cpcResultats.exploitation >= 0"
+                       [class.negatif]="cpcResultats.exploitation < 0">
+                    <span>Résultat d'exploitation</span>
+                    <strong>{{ formatResultat(cpcResultats.exploitation) }}</strong>
+                  </div>
+                  <div class="cpc-result-row"
+                       [class.positif]="cpcResultats.financier >= 0"
+                       [class.negatif]="cpcResultats.financier < 0">
+                    <span>Résultat financier</span>
+                    <strong>{{ formatResultat(cpcResultats.financier) }}</strong>
+                  </div>
+                  <div class="cpc-result-row avant-impots"
+                       [class.positif]="cpcResultats.avant_impots >= 0"
+                       [class.negatif]="cpcResultats.avant_impots < 0">
+                    <span>Résultat avant impôts</span>
+                    <strong>{{ formatResultat(cpcResultats.avant_impots) }}</strong>
+                  </div>
+                  <div class="cpc-result-row net"
+                       [class.positif]="cpcResultats.net >= 0"
+                       [class.negatif]="cpcResultats.net < 0">
+                    <span><mat-icon>trending_up</mat-icon>Résultat net</span>
+                    <strong>{{ formatResultat(cpcResultats.net) }}</strong>
+                  </div>
+                </div>
+
+                @if (cpcData.rubriques?.length) {
+                  <div class="cpc-rubriques">
+                    @for (r of cpcData.rubriques!; track r.rubrique) {
+                      @if (r.type === 'resultat') {
+                        <div class="cpc-rubrique-result"
+                             [class.positif]="r.total >= 0"
+                             [class.negatif]="r.total < 0">
+                          <span class="cpc-rb-code">{{ r.rubrique }}</span>
+                          <span class="cpc-rb-titre">{{ r.titre }}</span>
+                          <span class="cpc-rb-total">{{ formatResultat(r.total) }}</span>
+                        </div>
+                      }
+                      @if (r.type !== 'resultat' && r.total > 0) {
+                        <div class="cpc-rubrique-header">
+                          <span class="cpc-rb-code">{{ r.rubrique }}</span>
+                          <span class="cpc-rb-titre">{{ r.titre }}</span>
+                          <span class="cpc-rb-total">{{ r.total | number:'1.2-2' }}</span>
+                        </div>
+                        @for (ligne of r.lignes; track ligne.compte) {
+                          <div class="cpc-ligne">
+                            <span class="cpc-ligne-compte mono">{{ ligne.compte }}</span>
+                            <span class="cpc-ligne-lib">{{ ligne.libelle }}</span>
+                            <span class="cpc-ligne-montant">{{ ligne.montant | number:'1.2-2' }}</span>
+                          </div>
+                        }
+                      }
+                    }
+                  </div>
+                }
+              </div>
+            }
+
+
+
+
+
+
+
+
+
+          </div><!-- /data-scroll -->
+        </div><!-- /data-side -->
+      </div><!-- /detail-body -->
+    </aside>
+  }
+
+  <!-- ═══════════════════════ MODAL LIEN CLIENT ═══════════════════════ -->
+  @if (showLienModal()) {
+    <div class="modal-overlay" (click)="showLienModal.set(false)">
+      <div class="modal-box" (click)="$event.stopPropagation()">
+        <button mat-icon-button class="modal-close" (click)="showLienModal.set(false)">
+          <mat-icon>close</mat-icon>
+        </button>
+        <h3><mat-icon>link</mat-icon>Générer un lien d'upload client</h3>
+        <p class="modal-desc">Sélectionnez un client pour générer un lien sécurisé (30 jours).</p>
+        <div class="clients-list">
+          @if (clients().length === 0) {
+            <div class="no-clients"><mat-icon>person_off</mat-icon><span>Aucun client assigné</span></div>
+          }
+          @for (c of clients(); track c.id) {
+            <div class="client-item"
+                 [class.selected]="clientSelectionne()?.id === c.id"
+                 (click)="clientSelectionne.set(c)">
+              <div class="client-avatar">{{ getClientAvatar(c.nomEntreprise) }}</div>
+              <div class="client-info">
+                <span class="client-nom">{{ c.nomEntreprise }}</span>
+                @if (c.email) { <span class="client-email">{{ c.email }}</span> }
+              </div>
+              @if (clientSelectionne()?.id === c.id) {
+                <mat-icon class="check-icon">check_circle</mat-icon>
+              }
+            </div>
+          }
+        </div>
+        @if (lienGenere()) {
+          <div class="lien-genere">
+            <mat-icon>check_circle</mat-icon>
+            <div>
+              <p>✅ Lien copié !</p>
+              <code>{{ lienGenere() }}</code>
+              <button mat-stroked-button style="margin-top:8px; font-size:12px" (click)="copierLien()">
+                <mat-icon>content_copy</mat-icon> Copier à nouveau
+              </button>
+            </div>
+          </div>
+        }
+        <div class="modal-actions">
+          <button mat-button (click)="showLienModal.set(false)">Annuler</button>
+          <button mat-flat-button style="background:#6366f1; color:white"
+                  [disabled]="!clientSelectionne()" (click)="genererLien()">
+            <mat-icon>link</mat-icon> Générer le lien
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- ═══════════════════════ MODAL MODIFIER ÉCRITURE ═══════════════════════ -->
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <!-- REMPLACER le modal "MODAL MODIFIER ÉCRITURE" par celui-ci     -->
+  <!-- Ajout : bouton + ligne, bouton supprimer ligne                -->
+  <!-- ══════════════════════════════════════════════════════════════ -->
+
+  @if (showModifierModal()) {
+    <div class="modal-overlay" (click)="showModifierModal.set(false)">
+      <div class="modal-box modal-large" (click)="$event.stopPropagation()">
+        <button mat-icon-button class="modal-close" (click)="showModifierModal.set(false)">
+          <mat-icon>close</mat-icon>
+        </button>
+        <h3><mat-icon>edit</mat-icon>Modifier l'écriture comptable</h3>
+        <p class="modal-desc">Corrigez les comptes ou montants générés par l'IA.</p>
+
+        <table class="edit-table">
+          <thead>
+          <tr>
+            <th>Compte PCG</th>
+            <th>Libellé</th>
+            <th>Débit</th>
+            <th>Crédit</th>
+            <th></th>
+          </tr>
+          </thead>
+          <tbody>
+            @for (e of ecrituresModifiees(); track e.num; let i = $index) {
+              <tr>
+                <td>
+                  <input class="edit-input mono" [value]="e.compte"
+                         (change)="modifierLigneEcriture(i, 'compte', $any($event.target).value)" />
+                </td>
+                <td>
+                  <input class="edit-input" [value]="e.libelle"
+                         (change)="modifierLigneEcriture(i, 'libelle', $any($event.target).value)" />
+                </td>
+                <td>
+                  <input class="edit-input montant" type="number" min="0" [value]="e.debit"
+                         (change)="modifierLigneEcriture(i, 'debit', +$any($event.target).value)" />
+                </td>
+                <td>
+                  <input class="edit-input montant" type="number" min="0" [value]="e.credit"
+                         (change)="modifierLigneEcriture(i, 'credit', +$any($event.target).value)" />
+                </td>
+                <td>
+                  <button mat-icon-button color="warn" (click)="supprimerLigne(i)"
+                          matTooltip="Supprimer cette ligne">
+                    <mat-icon>delete</mat-icon>
+                  </button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+
+        <!-- Bouton ajouter ligne -->
+        <button mat-stroked-button style="margin-top:12px; color:#6366f1; border-color:#6366f1"
+                (click)="ajouterLigne()">
+          <mat-icon>add</mat-icon>
+          Ajouter une ligne
+        </button>
+
+        <div class="modal-actions" style="margin-top:16px">
+          <button mat-button (click)="showModifierModal.set(false)">Annuler</button>
+          <button mat-flat-button style="background:#6366f1; color:white"
+                  [disabled]="modificationEnCours()"
+                  (click)="sauvegarderModification()">
+            <mat-icon>save</mat-icon> Sauvegarder la correction
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+
+
+
+
+
+
+  <!-- ═══════════════════════ MODAL PAIEMENT ═══════════════════════ -->
+  @if (showPaiementModal()) {
+    <div class="modal-overlay" (click)="showPaiementModal.set(false)">
+      <div class="modal-box" (click)="$event.stopPropagation()">
+        <button mat-icon-button class="modal-close" (click)="showPaiementModal.set(false)">
+          <mat-icon>close</mat-icon>
+        </button>
+        <h3>
+          <mat-icon>payments</mat-icon>
+          {{ estVente(factureSelectionnee()!) ? 'Enregistrer le virement reçu' : 'Confirmer le paiement' }}
+        </h3>
+        <div class="montant-attendu">
+          <span>Montant {{ estVente(factureSelectionnee()!) ? 'attendu' : 'à payer' }} :</span>
+          <strong>{{ formatMontant(factureSelectionnee()!.montantTtc, factureSelectionnee()!.devise) }}</strong>
+        </div>
+        <div class="paiement-form">
+          <div class="paiement-field">
+            <label>Montant {{ estVente(factureSelectionnee()!) ? 'reçu' : 'payé' }} *</label>
+            <input type="number" class="edit-input montant-full" step="0.01" min="0"
+                   [value]="paiementForm().montantPaye"
+                   (input)="setPaiementMontant(+$any($event.target).value)" />
+          </div>
+          <div class="paiement-field">
+            <label>Mode de paiement *</label>
+            <select class="edit-select"
+                    [value]="paiementForm().modePaiement"
+                    (change)="setPaiementMode($any($event.target).value)">
+              <option value="VIREMENT">Virement bancaire</option>
+              <option value="CHEQUE">Chèque</option>
+              <option value="ESPECES">Espèces</option>
+              <option value="CARTE">Carte bancaire</option>
+            </select>
+          </div>
+          <div class="paiement-field col-span-2">
+            <label>Référence (SMS banque / chèque / ordre de paiement) *</label>
+            <input type="text" class="edit-input"
+                   placeholder="Ex: VIR-20251201-001 ou CHQ-12345"
+                   [value]="paiementForm().referenceVirement"
+                   (input)="setPaiementRef($any($event.target).value)" />
+          </div>
+        </div>
+        @if (erreurPaiement()) {
+          <div class="erreur-paiement">
+            <mat-icon>error</mat-icon>{{ erreurPaiement() }}
+          </div>
+        }
+        <div class="modal-actions">
+          <button mat-button (click)="showPaiementModal.set(false)">Annuler</button>
+          <button mat-flat-button style="background:#22c55e; color:white"
+                  (click)="confirmerPaiement()">
+            <mat-icon>check_circle</mat-icon>
+            {{ estVente(factureSelectionnee()!) ? 'Confirmer l\'encaissement' : 'Confirmer le paiement' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+
+
+
+  @if (showModifierCpcModal()) {
+    <div class="modal-overlay" (click)="showModifierCpcModal.set(false)">
+      <div class="modal-box modal-large" (click)="$event.stopPropagation()">
+        <button mat-icon-button class="modal-close" (click)="showModifierCpcModal.set(false)">
+          <mat-icon>close</mat-icon>
+        </button>
+        <h3><mat-icon>bar_chart</mat-icon>Modifier le CPC</h3>
+        <p class="modal-desc">Corrigez les montants du Compte de Produits et Charges.</p>
+
+        @if (cpcModifie()?.rubriques?.length) {
+          @for (rubrique of cpcModifie().rubriques; track rubrique.rubrique; let ri = $index) {
+            @if (rubrique.type !== 'resultat' && rubrique.lignes?.length) {
+              <div style="margin-bottom:16px">
+                <div style="font-weight:700; color:#6366f1; margin-bottom:8px; font-size:13px">
+                  {{ rubrique.rubrique }} — {{ rubrique.titre }}
+                </div>
+                <table class="edit-table">
+                  <thead>
+                  <tr>
+                    <th>Compte</th>
+                    <th>Libellé</th>
+                    <th>Montant</th>
+                  </tr>
+                  </thead>
+                  <tbody>
+                    @for (ligne of rubrique.lignes; track ligne.compte; let li = $index) {
+                      <tr>
+                        <td>
+                          <input class="edit-input mono" [value]="ligne.compte"
+                                 (change)="modifierLigneCpc(ri, li, 'compte', $any($event.target).value)" />
+                        </td>
+                        <td>
+                          <input class="edit-input" [value]="ligne.libelle"
+                                 (change)="modifierLigneCpc(ri, li, 'libelle', $any($event.target).value)" />
+                        </td>
+                        <td>
+                          <input class="edit-input montant" type="number" min="0" [value]="ligne.montant"
+                                 (change)="modifierLigneCpc(ri, li, 'montant', +$any($event.target).value)" />
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            }
+          }
+        }
+
+        <div class="modal-actions" style="margin-top:16px">
+          <button mat-button (click)="showModifierCpcModal.set(false)">Annuler</button>
+          <button mat-flat-button style="background:#6366f1; color:white"
+                  [disabled]="modificationEnCours()"
+                  (click)="sauvegarderCpc()">
+            <mat-icon>save</mat-icon> Sauvegarder
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+
+
+
+
+
+
+</div>

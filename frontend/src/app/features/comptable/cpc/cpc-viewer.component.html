@@ -1,0 +1,281 @@
+<div class="viewer-layout">
+  <app-comptable-sidebar></app-comptable-sidebar>
+
+  <main class="viewer-main">
+
+    <!-- ── Header ── -->
+    <div class="page-header">
+      <div class="header-left">
+        <div class="header-icon-wrap">
+          <mat-icon>bar_chart</mat-icon>
+        </div>
+        <div>
+          <h1>États comptables</h1>
+          <p class="header-sub">
+            @if (clientCtx.clientActif()) {
+              <strong>{{ clientCtx.clientActif()!.nomEntreprise }}</strong>
+              &nbsp;·&nbsp;{{ periodeLabel }}
+            } @else {
+              Sélectionnez un client
+            }
+          </p>
+        </div>
+      </div>
+
+      <!-- Export -->
+      @if (vue() !== 'cpc' && (balance().length || journal().length || grandLivre().length)) {
+        <button class="btn-export" (click)="exporterCsv()">
+          <mat-icon>download</mat-icon>
+          Exporter CSV
+        </button>
+      }
+    </div>
+
+    <!-- ── Onglets ── -->
+    <div class="tabs-bar">
+      @for (tab of TABS; track tab.key) {
+        <button class="tab-btn"
+                [class.active]="vue() === tab.key"
+                (click)="changerVue(tab.key)">
+          <mat-icon>{{ tab.icon }}</mat-icon>
+          {{ tab.label }}
+        </button>
+      }
+    </div>
+
+    <!-- ── Panneau période + paramètres ── -->
+    <div class="controls-bar">
+
+      <!-- Mode période -->
+      <div class="mode-toggle">
+        <button [class.active]="modePeriode() === 'exercice'"
+                (click)="modePeriode.set('exercice')">
+          Par exercice
+        </button>
+        <button [class.active]="modePeriode() === 'libre'"
+                (click)="modePeriode.set('libre')">
+          Période libre
+        </button>
+      </div>
+
+      @if (modePeriode() === 'exercice') {
+        <select [ngModel]="exercice()"
+                (ngModelChange)="exercice.set($event)"
+                class="ctrl-select">
+          @for (a of ANNEES; track a) {
+            <option [value]="a">{{ a }}</option>
+          }
+        </select>
+      } @else {
+        <input type="date" class="ctrl-input"
+               [ngModel]="debut()"
+               (ngModelChange)="debut.set($event)">
+        <span class="ctrl-sep">→</span>
+        <input type="date" class="ctrl-input"
+               [ngModel]="fin()"
+               (ngModelChange)="fin.set($event)">
+      }
+
+      <!-- Compte pour grand-livre -->
+      @if (vue() === 'grand-livre') {
+        <input type="text" class="ctrl-input ctrl-compte"
+               placeholder="N° compte ex: 3421"
+               [ngModel]="compteGL()"
+               (ngModelChange)="compteGL.set($event)">
+      }
+
+      <button class="btn-generer" (click)="generer()">
+        <mat-icon>play_arrow</mat-icon>
+        Générer
+      </button>
+    </div>
+
+    @if (loading()) {
+      <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+    }
+
+    @if (erreur()) {
+      <div class="erreur-msg">
+        <mat-icon>error_outline</mat-icon>
+        {{ erreur() }}
+      </div>
+    }
+
+    <!-- ══════════════════════════════════════════ -->
+    <!-- VUE CPC -->
+    <!-- ══════════════════════════════════════════ -->
+    @if (vue() === 'cpc' && cpc()) {
+      <div class="content-area">
+
+        <!-- Résultats synthèse -->
+        <div class="cpc-resultats">
+          <div class="res-card">
+            <span class="res-lbl">Résultat d'exploitation</span>
+            <span class="res-val" [class]="getResultatClass(cpc()!.resultats.exploitation)">
+              {{ formatMontant(cpc()!.resultats.exploitation) }}
+            </span>
+          </div>
+          <div class="res-card">
+            <span class="res-lbl">Résultat courant</span>
+            <span class="res-val" [class]="getResultatClass(cpc()!.resultats.courant)">
+              {{ formatMontant(cpc()!.resultats.courant) }}
+            </span>
+          </div>
+          <div class="res-card res-net">
+            <span class="res-lbl">Résultat net</span>
+            <span class="res-val" [class]="getResultatClass(cpc()!.resultats.net)">
+              {{ formatMontant(cpc()!.resultats.net) }}
+            </span>
+          </div>
+        </div>
+
+        <!-- Rubriques -->
+        @for (rubrique of cpc()!.rubriques; track rubrique.rubrique) {
+          <div class="cpc-rubrique">
+            <div class="rubrique-header" [class]="rubrique.type">
+              <span>{{ rubrique.titre }}</span>
+              <span class="rubrique-total">{{ formatMontant(rubrique.total) }}</span>
+            </div>
+            @for (ligne of rubrique.lignes; track ligne.compte) {
+              <div class="rubrique-ligne">
+                <span class="ligne-compte">{{ ligne.compte }}</span>
+                <span class="ligne-libelle">{{ ligne.libelle }}</span>
+                <span class="ligne-montant">{{ formatMontant(ligne.montant) }}</span>
+              </div>
+            }
+          </div>
+        }
+      </div>
+    }
+
+    <!-- ══════════════════════════════════════════ -->
+    <!-- VUE BALANCE -->
+    <!-- ══════════════════════════════════════════ -->
+    @if (vue() === 'balance' && balance().length > 0) {
+      <div class="content-area">
+        <table class="data-table">
+          <thead>
+          <tr>
+            <th>Compte</th>
+            <th>Intitulé</th>
+            <th class="col-num">Total débit</th>
+            <th class="col-num">Total crédit</th>
+            <th class="col-num">Solde</th>
+          </tr>
+          </thead>
+          <tbody>
+            @for (l of balance(); track l.compte) {
+              <tr>
+                <td class="cell-compte">{{ l.compte }}</td>
+                <td>{{ l.intitule }}</td>
+                <td class="col-num">{{ formatMontant(l.totalDebit) }}</td>
+                <td class="col-num">{{ formatMontant(l.totalCredit) }}</td>
+                <td class="col-num" [class]="getSoldeClass(l.solde)">
+                  {{ formatMontant(l.solde) }}
+                </td>
+              </tr>
+            }
+          </tbody>
+          <tfoot>
+          <tr class="total-row">
+            <td colspan="2">TOTAL</td>
+            <td class="col-num">{{ formatMontant(totalDebit) }}</td>
+            <td class="col-num">{{ formatMontant(totalCredit) }}</td>
+            <td class="col-num" [class]="getSoldeClass(totalSolde)">
+              {{ formatMontant(totalSolde) }}
+            </td>
+          </tr>
+          </tfoot>
+        </table>
+      </div>
+    }
+
+    <!-- ══════════════════════════════════════════ -->
+    <!-- VUE JOURNAL -->
+    <!-- ══════════════════════════════════════════ -->
+    @if (vue() === 'journal' && journal().length > 0) {
+      <div class="content-area">
+        <table class="data-table">
+          <thead>
+          <tr>
+            <th>Journal</th>
+            <th>Date</th>
+            <th>Pièce</th>
+            <th>Compte</th>
+            <th>Libellé</th>
+            <th class="col-num">Débit</th>
+            <th class="col-num">Crédit</th>
+          </tr>
+          </thead>
+          <tbody>
+            @for (l of journal(); track l.id) {
+              <tr>
+                <td><span class="badge-journal">{{ l.journal }}</span></td>
+                <td class="cell-date">{{ l.dateEcriture | date:'dd/MM/yyyy' }}</td>
+                <td class="cell-piece">{{ l.piece }}</td>
+                <td class="cell-compte">{{ l.compte }}</td>
+                <td>{{ l.libelle }}</td>
+                <td class="col-num">{{ l.debit ? formatMontant(l.debit) : '—' }}</td>
+                <td class="col-num">{{ l.credit ? formatMontant(l.credit) : '—' }}</td>
+              </tr>
+            }
+          </tbody>
+          <tfoot>
+          <tr class="total-row">
+            <td colspan="5">TOTAL</td>
+            <td class="col-num">{{ formatMontant(totalJournalDebit) }}</td>
+            <td class="col-num">{{ formatMontant(totalJournalCredit) }}</td>
+          </tr>
+          </tfoot>
+        </table>
+      </div>
+    }
+
+    <!-- ══════════════════════════════════════════ -->
+    <!-- VUE GRAND-LIVRE -->
+    <!-- ══════════════════════════════════════════ -->
+    @if (vue() === 'grand-livre' && grandLivre().length > 0) {
+      <div class="content-area">
+        <div class="gl-header">
+          <mat-icon>account_tree</mat-icon>
+          Grand-livre du compte
+          <strong>{{ compteGL() }}</strong>
+          — {{ periodeLabel }}
+        </div>
+        <table class="data-table">
+          <thead>
+          <tr>
+            <th>Date</th>
+            <th>Pièce</th>
+            <th>Libellé</th>
+            <th class="col-num">Débit</th>
+            <th class="col-num">Crédit</th>
+          </tr>
+          </thead>
+          <tbody>
+            @for (l of grandLivre(); track l.id) {
+              <tr>
+                <td class="cell-date">{{ l.dateEcriture | date:'dd/MM/yyyy' }}</td>
+                <td class="cell-piece">{{ l.piece }}</td>
+                <td>{{ l.libelle }}</td>
+                <td class="col-num">{{ l.debit ? formatMontant(l.debit) : '—' }}</td>
+                <td class="col-num">{{ l.credit ? formatMontant(l.credit) : '—' }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+
+    <!-- État vide -->
+    @if (!loading() && !erreur() &&
+    !cpc() && !balance().length &&
+    !journal().length && !grandLivre().length) {
+      <div class="empty-state">
+        <mat-icon>bar_chart</mat-icon>
+        <p>Sélectionnez une période et cliquez sur "Générer"</p>
+      </div>
+    }
+
+  </main>
+</div>
